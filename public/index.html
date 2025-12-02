@@ -242,10 +242,12 @@
 
     /* --- PLAYER LAYOUT: left = room + map, right = lists + actions --- */
     #player-view .player-grid {
-      display: grid;
-      grid-template-columns: 1.1fr 1.1fr;
-      grid-gap: 14px;
-    }
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-gap: 12px;
+  align-items: start;
+}
+
     #player-view .right-column {
       display: flex;
       flex-direction: column;
