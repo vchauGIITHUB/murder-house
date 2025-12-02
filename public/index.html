@@ -243,7 +243,7 @@
     /* --- PLAYER LAYOUT: left = room + map, right = lists + actions --- */
     #player-view .player-grid {
   display: grid;
-  grid-template-columns: auto 1fr;
+  grid-template-columns: minmax(0, 520px) minmax(0, 1fr);
   grid-gap: 12px;
   align-items: start;
 }
@@ -267,8 +267,9 @@
       position: relative;
       width: 100%;
       max-width: 420px;
+      min-width: 420px;
       margin-top: 8px;
-      aspect-ratio: 2 / 3;            /* keeps candle/dots aligned on all screens */
+      aspect-ratio: 665 / 900;            /* keeps candle/dots aligned on all screens */
       background-image: url('mh-map-player.png');
       background-position: center;
       background-size: contain;
