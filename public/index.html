@@ -15,6 +15,10 @@
       margin: 0 auto;
       padding: 32px 16px 40px;
     }
+.highlight-yellow {
+    color: #ffe680 !important;   /* soft readable yellow */
+    font-weight: 600;
+}
 
     /* --- TOP HEADER LAYOUT (title + round + identity mini card) --- */
     .top-layout {
@@ -102,7 +106,7 @@
       background: radial-gradient(circle at top, #1c0c10 0, #090305 55%, #050506 100%);
       border-radius: 16px;
       border: 1px solid #3b1518;
-      padding: 16px 16px 18px;
+      padding: 12px 12px 14px;
       box-shadow: 0 0 18px rgba(0,0,0,0.8);
     }
     .card h2 {
@@ -210,7 +214,7 @@
     }
     .section-title {
       font-size: 14px;
-      margin: 6px 0 3px;
+      margin: 4px 0 2px;
       color: #ffd5ca;
       text-transform: uppercase;
       letter-spacing: 0.12em;
@@ -240,19 +244,19 @@
     #player-view .player-grid {
       display: grid;
       grid-template-columns: 1.1fr 1.1fr;
-      grid-gap: 18px;
+      grid-gap: 14px;
     }
     #player-view .right-column {
       display: flex;
       flex-direction: column;
-      gap: 16px;
+      gap: 10px;
     }
     @media (max-width: 820px) {
       #player-view .player-grid {
         grid-template-columns: 1fr;
       }
       #player-view .right-column {
-        gap: 12px;
+        gap: 8px;
       }
     }
 
@@ -477,10 +481,11 @@
         <small>Keep this hidden from everyone else.</small>
 
         <div class="muted">
-          Name: <span id="player-name-label">—</span><br/>
-          Role: <span id="player-role-label">—</span><br/>
-          PIN: <span id="player-pin-label">—</span>
-        </div>
+  Name: <span id="player-name-label" class="highlight-yellow">—</span><br/>
+  Role: <span id="player-role-label" class="highlight-yellow">—</span><br/>
+  PIN: <span id="player-pin-label" class="highlight-yellow">—</span>
+</div>
+
 
         <!-- DEAD banner: shows only if THIS player is dead -->
         <div id="dead-banner" class="dead-banner hidden">
@@ -532,7 +537,8 @@
         <div class="card">
           <div class="section-title">Your Room</div>
           <div class="muted">
-            Room: <span id="player-room-label">—</span>
+            Room: <span id="player-room-label" class="highlight-yellow">—</span>
+
           </div>
           <p id="room-description" style="font-size:13px;margin-top:6px;"></p>
 
