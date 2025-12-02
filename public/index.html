@@ -24,12 +24,12 @@
     .top-layout {
       display: flex;
       align-items: flex-start;
-      justify-content: space-between;
-      gap: 18px;
-      margin-bottom: 16px;
+      justify-content: center;
+      gap: 12px;
+      margin-bottom: 12px;
     }
     .title-block {
-      flex: 1 1 auto;
+      flex: 0 0 auto;
       text-align: center;
     }
     h1 {
@@ -60,6 +60,7 @@
     /* mini identity card beside title */
     .header-identity {
       flex: 0 0 260px;
+       max-width: 280px;
       margin-top: 4px;
       padding: 14px 14px 12px;
     }
@@ -267,7 +268,6 @@
       position: relative;
       width: 100%;
       max-width: 420px;
-      min-width: 420px;
       margin-top: 8px;
       aspect-ratio: 665 / 900;            /* keeps candle/dots aligned on all screens */
       background-image: url('mh-map-player.png');
