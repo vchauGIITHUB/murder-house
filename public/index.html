@@ -1,0 +1,1551 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>Murder House</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #050506;
+      color: #f7e4da;
+    }
+    .page {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 32px 16px 48px;
+    }
+    h1 {
+      text-align: center;
+      letter-spacing: 0.16em;
+      font-size: 32px;
+      color: #ff3b3b;
+      margin: 0 0 6px;
+    }
+    .subtitle {
+      text-align: center;
+      font-size: 13px;
+      color: #e3c9bd;
+      margin-bottom: 4px;
+    }
+    .round-pill {
+      display: inline-block;
+      margin: 0 auto 24px;
+      padding: 8px 32px;
+      border-radius: 999px;
+      border: 1px solid #ff3b3b;
+      color: #ffb5b5;
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 0.18em;
+    }
+    .round-wrap {
+      text-align: center;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: 1.2fr 1.2fr;
+      grid-gap: 18px;
+    }
+    .card {
+      background: radial-gradient(circle at top, #1c0c10 0, #090305 55%, #050506 100%);
+      border-radius: 16px;
+      border: 1px solid #3b1518;
+      padding: 18px 18px 20px;
+      box-shadow: 0 0 18px rgba(0,0,0,0.8);
+    }
+    .card h2 {
+      margin: 0 0 6px;
+      font-size: 18px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: #ffded6;
+    }
+    .card small {
+      display: block;
+      font-size: 11px;
+      color: #c5a59a;
+      margin-bottom: 12px;
+    }
+    label {
+      display: block;
+      font-size: 12px;
+      margin-bottom: 4px;
+      color: #e6c0b5;
+    }
+    input, select {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 8px 10px;
+      border-radius: 8px;
+      border: 1px solid #4b252a;
+      background: #120608;
+      color: #f7e4da;
+      font-size: 13px;
+      outline: none;
+    }
+    input:focus, select:focus {
+      border-color: #ff3b3b;
+      box-shadow: 0 0 0 1px rgba(255,59,59,0.35);
+    }
+    button {
+      margin-top: 8px;
+      padding: 9px 14px;
+      border-radius: 999px;
+      border: 1px solid #ff3b3b;
+      background: linear-gradient(90deg, #871818, #571011);
+      color: #ffe7df;
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 0.16em;
+      cursor: pointer;
+    }
+    button:hover {
+      filter: brightness(1.1);
+    }
+    button:active {
+      transform: translateY(1px);
+    }
+    button:disabled {
+      opacity: .6;
+      cursor: default;
+    }
+    .status {
+      margin-top: 12px;
+      padding: 8px 10px;
+      border-radius: 8px;
+      font-size: 12px;
+      background: #140607;
+      border: 1px solid #3d1518;
+      color: #f1d0c4;
+      min-height: 22px;
+    }
+    .status.error {
+      border-color: #ff5252;
+      color: #ffbbbb;
+    }
+    .status.success {
+      border-color: #3bc772;
+      color: #c3ffd8;
+    }
+    .muted {
+      font-size: 11px;
+      color: #a98a7f;
+    }
+    .hidden {
+      display: none;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+      margin-top: 8px;
+    }
+    th, td {
+      border-bottom: 1px solid #3b1518;
+      padding: 4px 6px;
+      text-align: left;
+    }
+    th {
+      color: #ffded6;
+      font-weight: 600;
+    }
+    .section-title {
+      font-size: 14px;
+      margin: 10px 0 4px;
+      color: #ffd5ca;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+    }
+    ul {
+      margin: 4px 0 0 18px;
+      padding: 0;
+      font-size: 12px;
+    }
+    li {
+      margin: 2px 0;
+    }
+    @media (max-width: 820px) {
+      .grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* --- PLAYER parchment mini-map --- */
+    .player-map {
+      position: relative;
+      width: 100%;
+      max-width: 420px;
+      margin-top: 8px;
+      padding-top: 150%;
+      background-image: url('mh-map-player.png');
+      background-position: center;
+      background-size: contain;
+      background-repeat: no-repeat;
+      background-color: #050506;
+    }
+
+    /* candle glow overlay (top-right near candle) */
+    .player-map .candle-glow {
+      position: absolute;
+      top: 11%;
+      right: 8%;
+      width: 90px;
+      height: 90px;
+      border-radius: 50%;
+      pointer-events: none;
+      background: radial-gradient(circle,
+        rgba(255, 230, 180, 0.95) 0%,
+        rgba(255, 190, 120, 0.55) 35%,
+        rgba(255, 140, 60, 0.18) 55%,
+        rgba(0, 0, 0, 0) 80%
+      );
+      opacity: 0.75;
+      filter: blur(1.5px);
+      mix-blend-mode: screen;
+      animation: candle-flicker 1.7s infinite alternate;
+    }
+
+    @keyframes candle-flicker {
+      0% {
+        opacity: 0.55;
+        transform: translate(-1px, 1px) scale(0.97);
+      }
+      50% {
+        opacity: 0.9;
+        transform: translate(0px, 0px) scale(1.02);
+      }
+      100% {
+        opacity: 0.65;
+        transform: translate(1px, -1px) scale(0.99);
+      }
+    }
+
+    .player-map .room-dot-area {
+      position: absolute;
+      width: 22%;
+      height: 10%;
+      transform: translate(-50%, -50%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .player-map .room-dot-area.current-room {
+      outline: 1px solid rgba(255, 179, 71, 0.9);
+      box-shadow: 0 0 8px rgba(255, 179, 71, 0.7);
+      border-radius: 12px;
+    }
+
+    .player-map .dots {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 4px;
+    }
+
+    .map-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 999px;
+      background: #ff3b3b;
+    }
+
+    .map-dot.dead {
+      background: #777;
+    }
+
+    /* --- GM map grid --- */
+    .map-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 6px;
+      margin-top: 8px;
+    }
+
+    .map-grid .map-room {
+      position: relative;
+      border: 1px solid #3b1518;
+      border-radius: 10px;
+      padding: 4px 6px 18px;
+      font-size: 10px;
+      line-height: 1.3;
+      background: #0b0507;
+    }
+
+    .map-grid .map-room .room-name {
+      display: block;
+      margin-bottom: 2px;
+      color: #f6d4c8;
+    }
+
+    .map-grid .map-room .dots {
+      position: absolute;
+      left: 6px;
+      bottom: 4px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 3px;
+    }
+
+    .status-good {
+      color: #9bff9b;
+      font-weight: 600;
+    }
+
+    .status-bad {
+      color: #ff9b9b;
+      font-weight: 600;
+    }
+
+    #kill-section {
+      display: none;
+    }
+
+    #gm-most-voted {
+      margin-top: 6px;
+      color: #ffd966;
+      font-weight: 600;
+    }
+
+    /* --- DEAD banner (only on killed player's own screen) --- */
+    .dead-banner {
+      margin-top: 10px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      border: 1px solid #ff3b3b;
+      background: linear-gradient(135deg,#3b0505,#1a0000 40%,#2b0000);
+      color: #ffd9d9;
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 0 14px rgba(0,0,0,0.8);
+    }
+    .dead-banner strong {
+      color: #ff7777;
+    }
+    .dead-banner::before {
+      content: "";
+      position: absolute;
+      top: -12px;
+      left: 6%;
+      width: 88%;
+      height: 26px;
+      background:
+        radial-gradient(circle at 10% 120%, #5a0000 0, transparent 55%),
+        radial-gradient(circle at 40% 120%, #7b0000 0, transparent 55%),
+        radial-gradient(circle at 75% 120%, #5a0000 0, transparent 55%);
+      opacity: 0.95;
+      filter: blur(0.4px);
+    }
+    .dead-banner::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle, rgba(255, 0, 0, 0.18) 0%, rgba(0, 0, 0, 0) 60%);
+      mix-blend-mode: screen;
+      opacity: 0;
+      animation: dead-pulse 2.4s infinite;
+    }
+    @keyframes dead-pulse {
+      0% { opacity: 0; }
+      40% { opacity: 0.45; }
+      100% { opacity: 0; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <h1>MURDER HOUSE</h1>
+    <div class="subtitle">Secret roles. Silent movement. Loud accusations.</div>
+    <div class="round-wrap">
+      <div id="round-pill" class="round-pill">ROUND —</div>
+    </div>
+
+    <!-- LOBBY -->
+    <div id="lobby-view" class="grid">
+      <div class="card">
+        <h2>Player Entrance</h2>
+        <small>Enter your name to join this run. The GM will give you your PIN and role.</small>
+
+        <label for="name-input">Your name</label>
+        <input id="name-input" placeholder="e.g., Theo" />
+        <button id="join-btn">Join Game</button>
+
+        <div class="section-title">Rejoin with PIN</div>
+        <label for="rejoin-pin">You already have a PIN</label>
+        <input id="rejoin-pin" placeholder="e.g., 42" />
+        <button id="rejoin-btn">Rejoin</button>
+
+        <div id="lobby-status" class="status"></div>
+      </div>
+
+      <div class="card">
+        <h2>GM Control (Locked)</h2>
+        <small>GM only. Players should not see this PIN.</small>
+
+        <label for="gm-pin">GM PIN</label>
+        <input id="gm-pin" type="text" inputmode="numeric" maxlength="4" autocomplete="off" placeholder="Enter GM PIN" />
+        <button id="gm-unlock-btn">Unlock GM Panel</button>
+
+        <div class="muted" style="margin-top:6px;">
+          Tip: GM should use their own device. Once you join as a player on this device, GM controls will hide.
+        </div>
+
+        <div id="gm-unlock-status" class="status"></div>
+      </div>
+    </div>
+
+    <!-- PLAYER VIEW -->
+    <div id="player-view" class="hidden">
+      <div class="grid">
+        <div class="card">
+          <h2>Your Identity</h2>
+          <small>Keep this hidden from everyone else.</small>
+
+          <div class="muted">
+            Name: <span id="player-name-label">—</span><br/>
+            Role: <span id="player-role-label">—</span><br/>
+            PIN: <span id="player-pin-label">—</span>
+          </div>
+
+          <!-- DEAD banner: shows only if THIS player is dead -->
+          <div id="dead-banner" class="dead-banner hidden">
+            <strong>You were murdered.</strong> You are now part of the floor. You cannot SPEAK, GESTURE or HINT.
+          </div>
+
+          <div class="section-title">Your Room</div>
+          <div class="muted">
+            Room: <span id="player-room-label">—</span>
+          </div>
+          <p id="room-description" style="font-size:13px;margin-top:6px;"></p>
+
+          <div class="section-title">Room Clues</div>
+          <ul id="player-room-clues-list"></ul>
+
+          <div class="section-title">Your Collected Clues</div>
+          <ul id="player-collected-clues-list"></ul>
+
+          <div class="section-title">Mini Map</div>
+          <div id="player-mini-map" class="player-map">
+            <!-- candle glow overlay -->
+            <div class="candle-glow"></div>
+
+            <!-- positions tuned to match background image -->
+            <div class="room-dot-area" data-room="FORGOTTEN CELLAR" style="top: 35.5%; left: 34%;">
+              <div class="dots"></div>
+            </div>
+            <div class="room-dot-area" data-room="THE UNDERHOUSE" style="top: 48%; left: 40%;">
+              <div class="dots"></div>
+            </div>
+            <div class="room-dot-area" data-room="THE IRON CHAMBER" style="top: 44%; left: 74%;">
+              <div class="dots"></div>
+            </div>
+            <div class="room-dot-area" data-room="WHISPERING HALL" style="top: 66%; left: 48%;">
+              <div class="dots"></div>
+            </div>
+            <div class="room-dot-area" data-room="THE FLICKERING LAMP STUDY" style="top: 60%; left: 18%;">
+              <div class="dots"></div>
+            </div>
+            <div class="room-dot-area" data-room="THE SILENT BEDROOM" style="top: 72%; left: 20%;">
+              <div class="dots"></div>
+            </div>
+            <div class="room-dot-area" data-room="THE BLOOD-STAINED KITCHEN" style="top: 59%; left: 77%;">
+              <div class="dots"></div>
+            </div>
+            <div class="room-dot-area" data-room="PARLOR OF ECHOES" style="top: 71.5%; left: 78%;">
+              <div class="dots"></div>
+            </div>
+          </div>
+
+          <div class="section-title">Souls In This Room</div>
+          <ul id="room-players-list"></ul>
+
+          <div class="section-title">Bodies On The Floor</div>
+          <ul id="room-bodies-list"></ul>
+
+          <button id="leave-game-btn" style="margin-top:12px;">Leave Game / Join New Run</button>
+        </div>
+
+        <div class="card">
+          <h2>Actions</h2>
+          <small>Moves are secret. Kills are quieter.</small>
+
+          <div class="section-title">Move</div>
+          <label for="move-room-select">Choose adjacent room</label>
+          <select id="move-room-select">
+            <option value="">-- choose room --</option>
+          </select>
+          <button id="move-btn">Record Move</button>
+
+          <div id="kill-section">
+            <div class="section-title">Kill (Killer only)</div>
+            <small class="muted">
+              You may only strike if exactly one other living player shares this room, and all living players have moved this round.
+            </small>
+            <label for="kill-target-select" style="margin-top:6px;">Eligible victim in this room</label>
+            <select id="kill-target-select">
+              <option value="">-- no valid victim --</option>
+            </select>
+            <button id="kill-btn">Attempt Kill</button>
+          </div>
+
+          <div class="section-title">Vote</div>
+          <label for="vote-select">Accuse a player</label>
+          <select id="vote-select">
+            <option value="">-- choose someone --</option>
+          </select>
+          <button id="vote-btn">Record Vote</button>
+
+          <div id="player-status" class="status"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- GM VIEW -->
+    <div id="gm-view" class="hidden">
+      <div class="grid">
+        <div class="card">
+          <h2>GM Control</h2>
+          <small>Only the GM should ever see this.</small>
+
+          <div class="muted">
+            Round: <span id="gm-round-label">1</span>
+          </div>
+
+          <button id="gm-next-round-btn">Next Round</button>
+          <button id="gm-new-game-btn" style="margin-left:6px;">New Game</button>
+          <button id="gm-reveal-dots-btn" style="margin-left:6px;">Toggle Player Dots</button>
+
+          <div class="section-title">Secret Sentence &amp; Clues</div>
+          <label for="gm-secret-sentence">Secret sentence (6–8 words)</label>
+          <input id="gm-secret-sentence" placeholder="e.g., THE KILLER HIDES IN THE CELLAR" />
+          <button id="gm-generate-clues-btn">Generate Clues</button>
+          <div id="gm-clues-status" class="status"></div>
+
+          <div class="section-title">Roster</div>
+          <small class="muted">
+            Role / Alive can be edited, then click "Save" on that row. You can also remove players.
+          </small>
+          <table id="gm-roster-table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Name</th>
+                <th>PIN</th>
+                <th>Role</th>
+                <th>Alive</th>
+                <th>Save</th>
+                <th>Remove</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+
+          <button id="gm-refresh-btn" style="margin-top:10px;">Refresh Roster &amp; Tables</button>
+          <button id="gm-randomize-btn" style="margin-left:6px;">Randomize Roles</button>
+
+          <div id="gm-status" class="status"></div>
+        </div>
+
+        <div class="card">
+          <h2>House Overview</h2>
+          <small>Rooms, moves, votes, and live dots for the current round.</small>
+
+          <div class="section-title">Rooms &amp; Names (Alive / Dead)</div>
+          <table id="gm-room-names-table">
+            <thead>
+              <tr>
+                <th>Room</th>
+                <th>Players</th>
+                <th>Clues</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+
+          <div class="section-title">Moves This Round</div>
+          <table id="gm-moves-table">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>PIN</th>
+                <th>Moved?</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+
+          <div class="section-title">Votes This Round</div>
+          <table id="gm-votes-table">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>PIN</th>
+                <th>Voted?</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+
+          <div id="gm-most-voted">Most Voted For: —</div>
+
+          <div class="section-title">Kill Attempts (Private for GM)</div>
+          <div id="gm-kill-attempts" class="muted"></div>
+
+          <div id="gm-map-wrapper" style="margin-top:10px;">
+            <div class="section-title">Live Map (GM Only)</div>
+            <div id="gm-map" class="map-grid">
+              <div class="map-room" data-room="WHISPERING HALL">
+                <span class="room-name">Whispering Hall</span>
+                <div class="dots"></div>
+              </div>
+              <div class="map-room" data-room="THE FLICKERING LAMP STUDY">
+                <span class="room-name">Lamp Study</span>
+                <div class="dots"></div>
+              </div>
+              <div class="map-room" data-room="THE SILENT BEDROOM">
+                <span class="room-name">Silent Bedroom</span>
+                <div class="dots"></div>
+              </div>
+              <div class="map-room" data-room="PARLOR OF ECHOES">
+                <span class="room-name">Parlor</span>
+                <div class="dots"></div>
+              </div>
+              <div class="map-room" data-room="THE BLOOD-STAINED KITCHEN">
+                <span class="room-name">Kitchen</span>
+                <div class="dots"></div>
+              </div>
+              <div class="map-room" data-room="THE UNDERHOUSE">
+                <span class="room-name">Underhouse</span>
+                <div class="dots"></div>
+              </div>
+              <div class="map-room" data-room="FORGOTTEN CELLAR">
+                <span class="room-name">Cellar</span>
+                <div class="dots"></div>
+              </div>
+              <div class="map-room" data-room="THE IRON CHAMBER">
+                <span class="room-name">Iron Chamber</span>
+                <div class="dots"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="muted" style="margin-top:10px;">
+            Use this with the printed map: each room shows how many souls are hiding there, but not who.
+            The dots map is just for you, GM, to keep track.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const state = {
+      pin: null,
+      gmPin: null,
+      player: null,
+      round: null,
+      roomInfo: null,
+      gmPlayers: [],
+      revealDots: false
+    };
+
+    let playerPollTimer = null;
+    let gmPollTimer = null;
+
+    function setRoundLabel(round) {
+      state.round = round;
+      const pill = document.getElementById('round-pill');
+      pill.textContent = round ? `ROUND ${round}` : 'ROUND —';
+
+      const gmRound = document.getElementById('gm-round-label');
+      if (gmRound) gmRound.textContent = round || '—';
+    }
+
+    function show(view) {
+      document.getElementById('lobby-view').classList.add('hidden');
+      document.getElementById('player-view').classList.add('hidden');
+      document.getElementById('gm-view').classList.add('hidden');
+
+      if (view === 'lobby') document.getElementById('lobby-view').classList.remove('hidden');
+      if (view === 'player') document.getElementById('player-view').classList.remove('hidden');
+      if (view === 'gm') document.getElementById('gm-view').classList.remove('hidden');
+    }
+
+    function setStatus(id, msg, isError) {
+      const el = document.getElementById(id);
+      el.textContent = msg || '';
+      el.classList.remove('error', 'success');
+      if (!msg) return;
+      el.classList.add(isError ? 'error' : 'success');
+    }
+
+    function savePlayerToStorage(pin) {
+      localStorage.setItem('mh_pin', pin);
+    }
+
+    function clearPlayerStorage() {
+      localStorage.removeItem('mh_pin');
+    }
+
+    function loadPlayerFromStorage() {
+      return localStorage.getItem('mh_pin') || null;
+    }
+
+    /* -------- Player helpers -------- */
+
+    function updatePlayerMiniMap(roomInfo, revealDots, roomDots) {
+      const currentRoom = roomInfo.room;
+      const areas = document.querySelectorAll('#player-mini-map .room-dot-area');
+
+      areas.forEach(div => {
+        const dots = div.querySelector('.dots');
+        dots.innerHTML = '';
+        div.classList.toggle('current-room', div.dataset.room === currentRoom);
+      });
+
+      if (revealDots && Array.isArray(roomDots)) {
+        roomDots.forEach(r => {
+          const div = document.querySelector(`#player-mini-map .room-dot-area[data-room="${r.room}"]`);
+          if (!div) return;
+          const dots = div.querySelector('.dots');
+          for (let i = 0; i < r.total; i++) {
+            const dot = document.createElement('span');
+            dot.className = 'map-dot';
+            dots.appendChild(dot);
+          }
+        });
+      } else {
+        const here = document.querySelector(`#player-mini-map .room-dot-area[data-room="${currentRoom}"]`);
+        if (!here) return;
+        const dots = here.querySelector('.dots');
+
+        (roomInfo.living || []).forEach(() => {
+          const dot = document.createElement('span');
+          dot.className = 'map-dot';
+          dots.appendChild(dot);
+        });
+        (roomInfo.bodies || []).forEach(() => {
+          const dot = document.createElement('span');
+          dot.className = 'map-dot dead';
+          dots.appendChild(dot);
+        });
+      }
+    }
+
+    function populateRoomState(roomInfo, revealDots, roomDots, roomClues, playerClues) {
+      const roomState = roomInfo || {};
+      state.roomInfo = roomState;
+
+      document.getElementById('player-room-label').textContent = roomState.room || '—';
+      document.getElementById('room-description').textContent = roomState.description || '';
+
+      const pList = document.getElementById('room-players-list');
+      const bList = document.getElementById('room-bodies-list');
+      pList.innerHTML = '';
+      bList.innerHTML = '';
+
+      const living = roomState.living || [];
+      const bodies = roomState.bodies || [];
+
+      if (living.length) {
+        living.forEach(p => {
+          const li = document.createElement('li');
+          li.textContent = p.name;
+          pList.appendChild(li);
+        });
+      } else {
+        const li = document.createElement('li');
+        li.textContent = 'No living souls are here.';
+        pList.appendChild(li);
+      }
+
+      if (bodies.length) {
+        bodies.forEach(p => {
+          const li = document.createElement('li');
+          li.textContent = p.name;
+          bList.appendChild(li);
+        });
+      } else {
+        const li = document.createElement('li');
+        li.textContent = 'No bodies… yet.';
+        bList.appendChild(li);
+      }
+
+      // Room clues display
+      const roomClueList = document.getElementById('player-room-clues-list');
+      if (roomClueList) {
+        roomClueList.innerHTML = '';
+        if (Array.isArray(roomClues) && roomClues.length) {
+          roomClues.forEach(text => {
+            const li = document.createElement('li');
+            li.textContent = `"${text}"`;
+            roomClueList.appendChild(li);
+          });
+        } else {
+          const li = document.createElement('li');
+          li.textContent = 'No clues are visible to you in this room.';
+          roomClueList.appendChild(li);
+        }
+      }
+
+      // Collected clues display
+      const collectedList = document.getElementById('player-collected-clues-list');
+      if (collectedList) {
+        collectedList.innerHTML = '';
+        if (Array.isArray(playerClues) && playerClues.length) {
+          playerClues.forEach(c => {
+            const li = document.createElement('li');
+            li.textContent = `[${c.room}] "${c.text}"`;
+            collectedList.appendChild(li);
+          });
+        } else {
+          const li = document.createElement('li');
+          li.textContent = 'You have not collected any clues yet.';
+          collectedList.appendChild(li);
+        }
+      }
+
+      updatePlayerMiniMap(roomState, revealDots, roomDots);
+    }
+
+    function populateAllowedRooms(rooms) {
+      const sel = document.getElementById('move-room-select');
+      sel.innerHTML = '<option value="">-- choose room --</option>';
+      (rooms || []).forEach(room => {
+        const opt = document.createElement('option');
+        opt.value = room;
+        opt.textContent = room;
+        sel.appendChild(opt);
+      });
+    }
+
+    // Voting: include ALL other players (dead or alive)
+    function populateVoteDropdown(roster, myPin) {
+      const sel = document.getElementById('vote-select');
+      sel.innerHTML = '<option value="">-- choose someone --</option>';
+
+      (roster || []).forEach(p => {
+        if (String(p.pin) === String(myPin)) return;
+        const opt = document.createElement('option');
+        opt.value = p.pin;
+        opt.textContent = p.name;
+        sel.appendChild(opt);
+      });
+    }
+
+    // Kill dropdown – only show when exactly one other living player shares room and canKill=true
+    function populateKillDropdown(roomInfo, myPin, canKill) {
+      const sel = document.getElementById('kill-target-select');
+      const killBtn = document.getElementById('kill-btn');
+      if (!sel || !killBtn) return;
+
+      sel.innerHTML = '<option value="">-- no valid victim --</option>';
+      sel.disabled = true;
+      killBtn.disabled = true;
+
+      if (!roomInfo || !Array.isArray(roomInfo.living)) return;
+
+      const candidates = roomInfo.living.filter(
+        p => String(p.pin) !== String(myPin)
+      );
+
+      if (canKill && candidates.length === 1) {
+        const c = candidates[0];
+        const opt = document.createElement('option');
+        opt.value = c.pin;
+        opt.textContent = c.name;
+        sel.appendChild(opt);
+
+        sel.value = String(c.pin);
+        sel.disabled = false;
+        killBtn.disabled = false;
+      }
+    }
+
+    function startPlayerPolling(pin) {
+      if (playerPollTimer) clearInterval(playerPollTimer);
+      playerPollTimer = setInterval(async () => {
+        if (!state.pin || String(state.pin) !== String(pin)) return;
+        if (document.getElementById('player-view').classList.contains('hidden')) return;
+
+        const { json } = await fetchJSON('/api/state', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ pin: state.pin })
+        });
+
+        if (json && json.ok) {
+          const prevStatus = document.getElementById('player-status').textContent;
+          applyPlayerState(json);
+          document.getElementById('player-status').textContent = prevStatus;
+        }
+      }, 4000);
+    }
+
+    function applyPlayerState(payload) {
+      const p = payload.player;
+      state.player = p;
+      state.pin = p.pin;
+      state.revealDots = !!payload.revealDots;
+
+      savePlayerToStorage(state.pin);
+      setRoundLabel(payload.round);
+
+      document.getElementById('player-name-label').textContent = p.name;
+      document.getElementById('player-role-label').textContent = p.role;
+      document.getElementById('player-pin-label').textContent = p.pin;
+
+      // DEAD banner visibility – only on this player's own screen
+      const deadBanner = document.getElementById('dead-banner');
+      if (deadBanner) {
+        if (p.alive) deadBanner.classList.add('hidden');
+        else deadBanner.classList.remove('hidden');
+      }
+
+      const killSection = document.getElementById('kill-section');
+      if (killSection) {
+        killSection.style.display = (p.role === 'Killer') ? 'block' : 'none';
+      }
+
+      populateRoomState(
+        payload.roomInfo,
+        payload.revealDots,
+        payload.roomDots,
+        payload.roomClues || [],
+        p.clues || []
+      );
+      populateAllowedRooms(payload.allowedRooms);
+      populateVoteDropdown(payload.roster, p.pin);
+      populateKillDropdown(payload.roomInfo, p.pin, payload.canKill);
+
+      show('player');
+      startPlayerPolling(p.pin);
+    }
+
+    async function fetchJSON(url, options) {
+      const res = await fetch(url, options);
+      const text = await res.text();
+      try {
+        const json = JSON.parse(text);
+        return { status: res.status, json };
+      } catch (e) {
+        return { status: res.status, json: { ok: false, error: text } };
+      }
+    }
+
+    /* -------- PLAYER: join / rejoin -------- */
+
+    document.getElementById('join-btn').addEventListener('click', async () => {
+      const name = document.getElementById('name-input').value.trim();
+      if (!name) {
+        setStatus('lobby-status', 'Enter a name first.', true);
+        return;
+      }
+
+      setStatus('lobby-status', 'Joining game…', false);
+
+      const { json: regJson } = await fetchJSON('/api/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name })
+      });
+
+      if (!regJson.ok) {
+        setStatus('lobby-status', regJson.error || 'Error joining game.', true);
+        return;
+      }
+
+      const pin = regJson.player.pin;
+
+      const { json: stateJson } = await fetchJSON('/api/state', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pin })
+      });
+
+      if (!stateJson.ok) {
+        setStatus('lobby-status', stateJson.error || 'Error loading state.', true);
+        return;
+      }
+
+      setStatus(
+        'lobby-status',
+        'Joined. GM will assign your role and PIN. Keep this screen hidden.',
+        false
+      );
+      applyPlayerState(stateJson);
+    });
+
+    document.getElementById('rejoin-btn').addEventListener('click', async () => {
+      const pin = document.getElementById('rejoin-pin').value.trim();
+      if (!pin) {
+        setStatus('lobby-status', 'Enter your PIN to rejoin.', true);
+        return;
+      }
+
+      setStatus('lobby-status', 'Rejoining…', false);
+
+      const { json: reJson } = await fetchJSON('/api/rejoin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pin })
+      });
+
+      if (!reJson.ok) {
+        setStatus('lobby-status', reJson.error || 'Error rejoining.', true);
+        return;
+      }
+
+      const { json: stateJson } = await fetchJSON('/api/state', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pin })
+      });
+
+      if (!stateJson.ok) {
+        setStatus('lobby-status', stateJson.error || 'Error loading state.', true);
+        return;
+      }
+
+      setStatus('lobby-status', 'Rejoined.', false);
+      applyPlayerState(stateJson);
+    });
+
+    document.getElementById('leave-game-btn').addEventListener('click', () => {
+      clearPlayerStorage();
+      state.pin = null;
+      state.player = null;
+
+      if (playerPollTimer) {
+        clearInterval(playerPollTimer);
+        playerPollTimer = null;
+      }
+
+      setStatus('player-status', '', false);
+      document.getElementById('name-input').value = '';
+      document.getElementById('rejoin-pin').value = '';
+      show('lobby');
+    });
+
+    /* -------- PLAYER: actions -------- */
+
+    document.getElementById('move-btn').addEventListener('click', async () => {
+      if (!state.pin) return;
+
+      const room = document.getElementById('move-room-select').value;
+      if (!room) {
+        setStatus('player-status', 'Choose a room first.', true);
+        return;
+      }
+
+      setStatus('player-status', 'Sneaking through the house…', false);
+
+      const { json } = await fetchJSON('/api/move', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pin: state.pin, room })
+      });
+
+      if (!json.ok) {
+        setStatus('player-status', json.error || 'Error moving.', true);
+        return;
+      }
+
+      const { json: stateJson } = await fetchJSON('/api/state', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pin: state.pin })
+      });
+
+      if (!stateJson.ok) {
+        setStatus('player-status', stateJson.error || 'Error loading state.', true);
+        return;
+      }
+
+      const msg = json.clue
+        ? `${json.message} A clue whispers: "${json.clue}"`
+        : (json.message || 'Move recorded.');
+
+      setStatus('player-status', msg, false);
+      applyPlayerState(stateJson);
+    });
+
+    document.getElementById('kill-btn').addEventListener('click', async () => {
+      if (!state.pin) return;
+
+      const sel = document.getElementById('kill-target-select');
+      const targetPin = sel ? sel.value : '';
+      if (!targetPin) {
+        setStatus(
+          'player-status',
+          'You may only kill when exactly one other living player shares your room, and everyone has moved.',
+          true
+        );
+        return;
+      }
+
+      setStatus('player-status', 'You steady your hand…', false);
+
+      const { json } = await fetchJSON('/api/kill', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pin: state.pin, targetPin })
+      });
+
+      if (!json.ok) {
+        setStatus('player-status', json.error || 'Kill failed.', true);
+        return;
+      }
+
+      const { json: stateJson } = await fetchJSON('/api/state', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pin: state.pin })
+      });
+
+      if (!stateJson.ok) {
+        setStatus('player-status', stateJson.error || 'Error loading state.', true);
+        return;
+      }
+
+      setStatus(
+        'player-status',
+        json.message || 'Your attempt has been recorded. Only the GM knows what happened.',
+        false
+      );
+      applyPlayerState(stateJson);
+    });
+
+    document.getElementById('vote-btn').addEventListener('click', async () => {
+      if (!state.pin) return;
+
+      const targetPin = document.getElementById('vote-select').value;
+      if (!targetPin) {
+        setStatus('player-status', 'Choose someone to accuse.', true);
+        return;
+      }
+
+      setStatus('player-status', 'Casting your vote…', false);
+
+      const { json } = await fetchJSON('/api/vote', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pin: state.pin, targetPin })
+      });
+
+      if (!json.ok) {
+        setStatus('player-status', json.error || 'Error voting.', true);
+        return;
+      }
+
+      setStatus('player-status', json.message || 'Vote recorded.', false);
+    });
+
+    /* -------- GM helpers -------- */
+
+    function renderGmRoster(players) {
+      state.gmPlayers = players || [];
+      const tbody = document.querySelector('#gm-roster-table tbody');
+      tbody.innerHTML = '';
+
+      (players || []).forEach(p => {
+        const tr = document.createElement('tr');
+
+        const tdId = document.createElement('td');
+        tdId.textContent = p.id;
+        tr.appendChild(tdId);
+
+        const tdName = document.createElement('td');
+        tdName.textContent = p.name;
+        tr.appendChild(tdName);
+
+        const tdPin = document.createElement('td');
+        tdPin.textContent = p.pin;
+        tr.appendChild(tdPin);
+
+        const tdRole = document.createElement('td');
+        const roleSel = document.createElement('select');
+        ['Unknown', 'Victim', 'Killer'].forEach(r => {
+          const opt = document.createElement('option');
+          opt.value = r;
+          opt.textContent = r;
+          if (p.role === r) opt.selected = true;
+          roleSel.appendChild(opt);
+        });
+        tdRole.appendChild(roleSel);
+        tr.appendChild(tdRole);
+
+        const tdAlive = document.createElement('td');
+        const aliveChk = document.createElement('input');
+        aliveChk.type = 'checkbox';
+        aliveChk.checked = p.alive;
+        tdAlive.appendChild(aliveChk);
+        tr.appendChild(tdAlive);
+
+        const tdSave = document.createElement('td');
+        const btn = document.createElement('button');
+        btn.textContent = 'Save';
+        btn.style.padding = '4px 10px';
+        btn.style.fontSize = '11px';
+        btn.addEventListener('click', async () => {
+          const { json } = await fetchJSON('/api/gm/updatePlayer', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              id: p.id,
+              role: roleSel.value,
+              alive: aliveChk.checked
+            })
+          });
+
+          if (!json.ok) {
+            setStatus('gm-status', json.error || 'Error saving player.', true);
+            return;
+          }
+          setStatus('gm-status', 'Saved.', false);
+        });
+        tdSave.appendChild(btn);
+        tr.appendChild(tdSave);
+
+        const tdRemove = document.createElement('td');
+        const delBtn = document.createElement('button');
+        delBtn.textContent = 'X';
+        delBtn.style.padding = '4px 10px';
+        delBtn.style.fontSize = '11px';
+        delBtn.addEventListener('click', async () => {
+          if (!confirm(`Remove ${p.name} (PIN ${p.pin}) from roster?`)) return;
+
+          const { json } = await fetchJSON('/api/gm/removePlayer', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: p.id, pin: p.pin })
+          });
+
+          if (!json.ok) {
+            setStatus('gm-status', json.error || 'Error removing player.', true);
+            return;
+          }
+
+          setStatus('gm-status', 'Player removed.', false);
+
+          const { json: rosterJson } = await fetchJSON('/api/gm/roster');
+          if (rosterJson && rosterJson.ok) {
+            setRoundLabel(rosterJson.round);
+            renderGmRoster(rosterJson.players);
+            await refreshGmSummaryAndTables();
+          }
+        });
+        tdRemove.appendChild(delBtn);
+        tr.appendChild(tdRemove);
+
+        tbody.appendChild(tr);
+      });
+    }
+
+    async function refreshGmSummaryAndTables() {
+      const { json } = await fetchJSON('/api/gm/summary');
+      if (!json.ok) {
+        setStatus('gm-status', json.error || 'Error loading GM summary.', true);
+        return;
+      }
+
+      setRoundLabel(json.round);
+
+      const rooms = json.rooms || [];
+      const roomNamesBody = document.querySelector('#gm-room-names-table tbody');
+      roomNamesBody.innerHTML = '';
+
+      if (!rooms.length) {
+        const tr = document.createElement('tr');
+        tr.innerHTML = '<td colspan="3">No rooms yet.</td>';
+        roomNamesBody.appendChild(tr);
+      } else {
+        rooms.forEach(r => {
+          const names = (r.players || [])
+            .map(p => `${p.name} (${p.alive ? 'alive' : 'dead'})`)
+            .join(', ') || '—';
+
+          const cluesText = (r.clues || []).length
+            ? r.clues.map(c => `"${c}"`).join(' / ')
+            : '—';
+
+          const tr = document.createElement('tr');
+          tr.innerHTML = `<td>${r.room}</td><td>${names}</td><td>${cluesText}</td>`;
+          roomNamesBody.appendChild(tr);
+        });
+      }
+
+      // GM live map dots
+      document.querySelectorAll('#gm-map .map-room').forEach(div => {
+        const dots = div.querySelector('.dots');
+        dots.innerHTML = '';
+      });
+
+      rooms.forEach(r => {
+        const roomDiv = document.querySelector(`#gm-map .map-room[data-room="${r.room}"]`);
+        if (!roomDiv) return;
+        const dots = roomDiv.querySelector('.dots');
+
+        (r.players || []).forEach(p => {
+          const dot = document.createElement('span');
+          dot.className = 'map-dot' + (p.alive ? '' : ' dead');
+          dot.title = `${p.name} (${p.pin})` + (p.alive ? '' : ' [dead]');
+          dots.appendChild(dot);
+        });
+      });
+
+      const allPlayers = (state.gmPlayers && state.gmPlayers.length)
+        ? state.gmPlayers
+        : (json.players || []);
+
+      const notMovedPins = new Set((json.notMoved || []).map(p => String(p.pin)));
+      const notVotedPins = new Set((json.notVoted || []).map(p => String(p.pin)));
+
+      const movesBody = document.querySelector('#gm-moves-table tbody');
+      const votesBody = document.querySelector('#gm-votes-table tbody');
+      movesBody.innerHTML = '';
+      votesBody.innerHTML = '';
+
+      if (!allPlayers.length) {
+        const tr1 = document.createElement('tr');
+        tr1.innerHTML = '<td colspan="3">No players yet.</td>';
+        movesBody.appendChild(tr1);
+
+        const tr2 = document.createElement('tr');
+        tr2.innerHTML = '<td colspan="3">No players yet.</td>';
+        votesBody.appendChild(tr2);
+      } else {
+        allPlayers.forEach(p => {
+          const pinStr = String(p.pin);
+
+          const moved = !notMovedPins.has(pinStr);
+          const moveTr = document.createElement('tr');
+          const moveStatus = moved ? 'Moved' : 'Not moved';
+          const moveClass = moved ? 'status-good' : 'status-bad';
+          moveTr.innerHTML = `<td>${p.name}</td><td>${p.pin}</td><td class="${moveClass}">${moveStatus}</td>`;
+          movesBody.appendChild(moveTr);
+
+          const voted = !notVotedPins.has(pinStr);
+          const voteTr = document.createElement('tr');
+          const voteStatus = voted ? 'Voted' : 'Not voted';
+          const voteClass = voted ? 'status-good' : 'status-bad';
+          voteTr.innerHTML = `<td>${p.name}</td><td>${p.pin}</td><td class="${voteClass}">${voteStatus}</td>`;
+          votesBody.appendChild(voteTr);
+        });
+      }
+
+      // --- Most Voted For (clean, no "undefined") ---
+      const mostBox = document.getElementById('gm-most-voted');
+      if (mostBox) {
+        const tallies = json.votesByTarget || [];
+        if (!tallies.length) {
+          mostBox.textContent = 'Most Voted For: —';
+        } else {
+          const maxCount = Math.max(...tallies.map(t => t.count || 0));
+          const top = tallies.filter(t => t.count === maxCount);
+          const names = top.map(t => t.name).join(', ');
+          mostBox.textContent = `Most Voted For: ${names} – ${maxCount} vote${maxCount === 1 ? '' : 's'}`;
+        }
+      }
+
+      // Kill attempts for this round
+      const killBox = document.getElementById('gm-kill-attempts');
+      if (killBox) {
+        const attempts = json.killAttempts || [];
+        if (!attempts.length) {
+          killBox.textContent = 'No kill attempts this round yet.';
+        } else {
+          const list = document.createElement('ul');
+          attempts.forEach(k => {
+            const li = document.createElement('li');
+            const resolvedText = k.resolved ? ' (revealed as dead after votes)' : ' (pending until all votes)';
+            li.textContent = `Killer attempted kill on ${k.victimName} in ${k.room}${resolvedText}`;
+            list.appendChild(li);
+          });
+          killBox.innerHTML = '';
+          killBox.appendChild(list);
+        }
+      }
+    }
+
+    function startGmPolling() {
+      if (gmPollTimer) clearInterval(gmPollTimer);
+      gmPollTimer = setInterval(async () => {
+        if (document.getElementById('gm-view').classList.contains('hidden')) return;
+        await refreshGmSummaryAndTables();
+      }, 4000);
+    }
+
+    /* -------- GM: unlock & buttons -------- */
+
+    document.getElementById('gm-unlock-btn').addEventListener('click', async () => {
+      const gmPin = document.getElementById('gm-pin').value.trim();
+      if (!gmPin) {
+        setStatus('gm-unlock-status', 'Enter GM PIN.', true);
+        return;
+      }
+
+      const { json } = await fetchJSON('/api/gm/unlock', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ gmPin })
+      });
+
+      if (!json.ok) {
+        setStatus('gm-unlock-status', json.error || 'GM unlock failed.', true);
+        return;
+      }
+
+      state.gmPin = gmPin;
+      setStatus('gm-unlock-status', 'GM panel unlocked on this device.', false);
+      setRoundLabel(json.round);
+      renderGmRoster(json.players);
+      await refreshGmSummaryAndTables();
+      show('gm');
+      startGmPolling();
+    });
+
+    document.getElementById('gm-refresh-btn').addEventListener('click', async () => {
+      const { json } = await fetchJSON('/api/gm/roster');
+      if (!json.ok) {
+        setStatus('gm-status', json.error || 'Error refreshing GM state.', true);
+        return;
+      }
+
+      setRoundLabel(json.round);
+      renderGmRoster(json.players);
+      await refreshGmSummaryAndTables();
+    });
+
+    document.getElementById('gm-randomize-btn').addEventListener('click', async () => {
+      const { json } = await fetchJSON('/api/gm/randomizeRoles', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
+
+      if (!json.ok) {
+        setStatus('gm-status', json.error || 'Error randomizing roles.', true);
+        return;
+      }
+
+      setStatus('gm-status', 'Roles assigned.', false);
+      renderGmRoster(json.players);
+      await refreshGmSummaryAndTables();
+    });
+
+    document.getElementById('gm-next-round-btn').addEventListener('click', async () => {
+      const { json } = await fetchJSON('/api/gm/nextRound', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
+
+      if (!json.ok) {
+        setStatus('gm-status', json.error || 'Error advancing round.', true);
+        return;
+      }
+
+      setRoundLabel(json.round);
+      setStatus('gm-status', 'Round advanced.', false);
+      await refreshGmSummaryAndTables();
+    });
+
+    document.getElementById('gm-new-game-btn').addEventListener('click', async () => {
+      const { json } = await fetchJSON('/api/gm/newGame', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
+
+      if (!json.ok) {
+        setStatus('gm-status', json.error || 'Error resetting game.', true);
+        return;
+      }
+
+      setRoundLabel(json.round);
+      renderGmRoster([]);
+      document.getElementById('gm-room-names-table').querySelector('tbody').innerHTML = '';
+      document.getElementById('gm-moves-table').querySelector('tbody').innerHTML = '';
+      document.getElementById('gm-votes-table').querySelector('tbody').innerHTML = '';
+      document.querySelectorAll('#gm-map .map-room .dots').forEach(d => d.innerHTML = '');
+      const mostBox = document.getElementById('gm-most-voted');
+      if (mostBox) mostBox.textContent = 'Most Voted For: —';
+
+      const killBox = document.getElementById('gm-kill-attempts');
+      if (killBox) killBox.textContent = 'No kill attempts this round yet.';
+
+      setStatus(
+        'gm-status',
+        'Game reset. Tell everyone to tap "Leave Game / Join New Run" and re-enter their names.',
+        false
+      );
+    });
+
+    document.getElementById('gm-reveal-dots-btn').addEventListener('click', async () => {
+      const { json } = await fetchJSON('/api/gm/toggleRevealDots', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
+
+      if (!json.ok) {
+        setStatus('gm-status', json.error || 'Error toggling player dots.', true);
+        return;
+      }
+
+      state.revealDots = json.revealDots;
+      setStatus(
+        'gm-status',
+        json.revealDots ? 'Players now see global dots.' : 'Players no longer see global dots.',
+        false
+      );
+    });
+
+    // GM: generate clues from secret sentence
+    document.getElementById('gm-generate-clues-btn').addEventListener('click', async () => {
+      const sentence = document.getElementById('gm-secret-sentence').value.trim();
+      if (!sentence) {
+        setStatus('gm-clues-status', 'Enter a secret sentence first.', true);
+        return;
+      }
+
+      setStatus('gm-clues-status', 'Generating clues and scattering them across rooms…', false);
+
+      const { json } = await fetchJSON('/api/gm/generateClues', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sentence })
+      });
+
+      if (!json.ok) {
+        setStatus('gm-clues-status', json.error || 'Error generating clues.', true);
+        return;
+      }
+
+      setStatus('gm-clues-status', 'Clues generated and assigned (2 per room).', false);
+      await refreshGmSummaryAndTables();
+    });
+
+    // Auto-rejoin if stored PIN
+    (async function init() {
+      const savedPin = loadPlayerFromStorage();
+      if (savedPin) {
+        const { json } = await fetchJSON('/api/state', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ pin: savedPin })
+        });
+
+        if (json && json.ok) {
+          applyPlayerState(json);
+          return;
+        } else {
+          clearPlayerStorage();
+        }
+      }
+      show('lobby');
+    })();
+  </script>
+</body>
+</html>
