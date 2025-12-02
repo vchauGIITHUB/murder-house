@@ -29,9 +29,13 @@
       margin-bottom: 12px;
     }
     .title-block {
-      flex: 0 0 auto;
-      text-align: center;
-    }
+    flex: none;            /* stops stretching left */
+    max-width: 500px;      /* or 420–520px — adjust if needed */
+    width: 100%;
+    margin: 0 auto;        /* centers it in the remaining space */
+    text-align: center;
+}
+
     h1 {
       letter-spacing: 0.16em;
       font-size: 32px;
