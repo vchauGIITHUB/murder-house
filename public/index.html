@@ -15,10 +15,10 @@
       margin: 0 auto;
       padding: 32px 16px 40px;
     }
-.highlight-yellow {
-    color: #ffe680 !important;   /* soft readable yellow */
-    font-weight: 600;
-}
+    .highlight-yellow {
+      color: #ffe680 !important;
+      font-weight: 600;
+    }
 
     /* --- TOP HEADER LAYOUT (title + round + identity mini card) --- */
     .top-layout {
@@ -60,7 +60,7 @@
     /* mini identity card beside title */
     .header-identity {
       flex: 0 0 260px;
-       max-width: 280px;
+      max-width: 280px;
       margin-top: 4px;
       padding: 14px 14px 12px;
     }
@@ -124,7 +124,6 @@
       margin-bottom: 10px;
     }
 
-    /* slightly tighter Souls/Clues card */
     .souls-card {
       padding-top: 12px;
       padding-bottom: 14px;
@@ -243,11 +242,11 @@
 
     /* --- PLAYER LAYOUT: left = room + map, right = lists + actions --- */
     #player-view .player-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 520px) minmax(0, 1fr);
-  grid-gap: 12px;
-  align-items: start;
-}
+      display: grid;
+      grid-template-columns: minmax(0, 520px) minmax(0, 1fr);
+      grid-gap: 12px;
+      align-items: start;
+    }
 
     #player-view .right-column {
       display: flex;
@@ -269,50 +268,50 @@
       width: 100%;
       max-width: 420px;
       margin-top: 8px;
-      aspect-ratio: 665 / 900;            /* keeps candle/dots aligned on all screens */
+      aspect-ratio: 665 / 900;
       background-image: url('mh-map-player.png');
       background-position: center;
       background-size: contain;
       background-repeat: no-repeat;
       background-color: #050506;
     }
-/* Keep room description no wider than the mini map */
-#room-description {
-  max-width: 420px;   /* match .player-map max-width */
-}
+    /* Keep room description no wider than the mini map */
+    #room-description {
+      max-width: 420px;
+    }
 
-    /* candle glow overlay (top-right near candle) */
+    /* Brighter candlelight glow */
     .player-map .candle-glow {
       position: absolute;
-      top: 4%;
-      right: 10%;
-      width: 90px;
-      height: 90px;
+      top: -1%;
+      right: 6%;
+      width: 120px;
+      height: 120px;
       border-radius: 50%;
       pointer-events: none;
       background: radial-gradient(circle,
-        rgba(255, 230, 180, 0.95) 0%,
-        rgba(255, 190, 120, 0.55) 35%,
-        rgba(255, 140, 60, 0.18) 55%,
-        rgba(0, 0, 0, 0) 80%
+        rgba(255, 240, 200, 1.0) 0%,
+        rgba(255, 210, 130, 0.85) 30%,
+        rgba(255, 170, 80, 0.4) 55%,
+        rgba(0, 0, 0, 0) 82%
       );
-      opacity: 0.75;
-      filter: blur(1.5px);
+      opacity: 0.95;
+      filter: blur(1.2px);
       mix-blend-mode: screen;
       animation: candle-flicker 1.7s infinite alternate;
     }
 
     @keyframes candle-flicker {
       0% {
-        opacity: 0.55;
+        opacity: 0.7;
         transform: translate(-1px, 1px) scale(0.97);
       }
       50% {
-        opacity: 0.9;
-        transform: translate(0px, 0px) scale(1.02);
+        opacity: 1;
+        transform: translate(0px, 0px) scale(1.05);
       }
       100% {
-        opacity: 0.65;
+        opacity: 0.8;
         transform: translate(1px, -1px) scale(0.99);
       }
     }
@@ -340,7 +339,6 @@
       gap: 4px;
     }
 
-    /* brighter glowing red dots */
     .map-dot {
       width: 9px;
       height: 9px;
@@ -410,7 +408,13 @@
       font-weight: 600;
     }
 
-    /* --- DEAD banner (only on killed player's own screen) --- */
+    /* Clue collected (GM table) */
+    .clue-collected {
+      color: #9bff9b;
+      font-weight: 600;
+    }
+
+    /* --- DEAD banner --- */
     .dead-banner {
       margin-top: 10px;
       padding: 10px 12px;
@@ -457,7 +461,56 @@
       100% { opacity: 0; }
     }
 
-    /* extra tightening on small screens */
+    /* Global popup overlay for: death, Room Reveal, Shove, Killer’s Gaze, Screams */
+    .global-popup-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.94);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+    }
+    .global-popup-overlay.hidden {
+      display: none;
+    }
+    .global-popup-card {
+      background: radial-gradient(circle at top, #3f0202 0, #1a0000 50%, #050101 100%);
+      border-radius: 18px;
+      border: 2px solid #ff3b3b;
+      padding: 26px 22px 20px;
+      max-width: 420px;
+      text-align: center;
+      box-shadow:
+        0 0 18px rgba(0,0,0,0.9),
+        0 0 32px rgba(255,0,0,0.45);
+    }
+    .global-popup-title {
+      font-size: 20px;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: #ff8585;
+      margin-bottom: 10px;
+    }
+    .global-popup-body {
+      font-size: 14px;
+      color: #ffd6d6;
+      margin-bottom: 18px;
+    }
+    .global-popup-close {
+      display: inline-block;
+      margin-top: 4px;
+      padding: 8px 18px;
+      border-radius: 999px;
+      border: 1px solid #ff3b3b;
+      background: linear-gradient(90deg, #b31212, #6f0505);
+      color: #ffe7df;
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 0.16em;
+      cursor: pointer;
+    }
+
     @media (max-width: 600px) {
       .card {
         padding: 12px 12px 14px;
@@ -472,6 +525,15 @@
   </style>
 </head>
 <body>
+  <!-- shared overlay popup -->
+  <div id="global-popup-overlay" class="global-popup-overlay hidden">
+    <div class="global-popup-card">
+      <div id="global-popup-title" class="global-popup-title">Title</div>
+      <div id="global-popup-body" class="global-popup-body">Body</div>
+      <button id="global-popup-close" class="global-popup-close">X</button>
+    </div>
+  </div>
+
   <div class="page">
     <div class="top-layout">
       <div class="title-block">
@@ -488,11 +550,10 @@
         <small>Keep this hidden from everyone else.</small>
 
         <div class="muted">
-  Name: <span id="player-name-label" class="highlight-yellow">—</span><br/>
-  Role: <span id="player-role-label" class="highlight-yellow">—</span><br/>
-  PIN: <span id="player-pin-label" class="highlight-yellow">—</span>
-</div>
-
+          Name: <span id="player-name-label" class="highlight-yellow">—</span><br/>
+          Role: <span id="player-role-label" class="highlight-yellow">—</span><br/>
+          PIN: <span id="player-pin-label" class="highlight-yellow">—</span>
+        </div>
 
         <!-- DEAD banner: shows only if THIS player is dead -->
         <div id="dead-banner" class="dead-banner hidden">
@@ -545,7 +606,6 @@
           <div class="section-title">Your Room</div>
           <div class="muted">
             Room: <span id="player-room-label" class="highlight-yellow">—</span>
-
           </div>
           <p id="room-description" style="font-size:13px;margin-top:6px;"></p>
 
@@ -584,7 +644,6 @@
         <!-- RIGHT: Souls/Bodies/Clues (top) + Actions (bottom) -->
         <div class="right-column">
           <div class="card souls-card">
-            <!-- Heading & subtitle removed to tighten layout -->
             <div class="section-title">Souls In This Room</div>
             <ul id="room-players-list"></ul>
 
@@ -647,12 +706,11 @@
 
           <button id="gm-next-round-btn">Next Round</button>
           <button id="gm-new-game-btn" style="margin-left:6px;">New Game</button>
-          <button id="gm-reveal-dots-btn" style="margin-left:6px;">Toggle Player Dots</button>
 
           <div class="section-title">Secret Sentence &amp; Clues</div>
           <label for="gm-secret-sentence">Secret sentence (6–8 words)</label>
           <input id="gm-secret-sentence" placeholder="e.g., THE KILLER HIDES IN THE CELLAR" />
-          <button id="gm-generate-clues-btn">Generate Clues</button>
+          <button id="gm-generate-clues-btn">Scatter Clues</button>
           <div id="gm-clues-status" class="status"></div>
 
           <div class="section-title">Roster</div>
@@ -674,8 +732,33 @@
             <tbody></tbody>
           </table>
 
-          <button id="gm-refresh-btn" style="margin-top:10px;">Refresh Roster &amp; Tables</button>
-          <button id="gm-randomize-btn" style="margin-left:6px;">Randomize Roles</button>
+          <!-- Manual countdown timer under roster -->
+          <div class="section-title">Round Timer</div>
+          <small class="muted">Set the countdown in seconds (default 120) then start.</small>
+          <div style="display:flex;align-items:center;gap:8px;margin-top:4px;">
+            <input id="gm-timer-input" type="number" min="5" step="5" value="120" style="max-width:90px;">
+            <div id="gm-timer-display" class="muted">02:00</div>
+          </div>
+          <div style="margin-top:4px;">
+            <button id="gm-timer-start-btn">Start Timer</button>
+            <button id="gm-timer-stop-btn" style="margin-left:6px;">Stop</button>
+            <button id="gm-timer-reset-btn" style="margin-left:6px;">Reset</button>
+          </div>
+
+          <!-- Room reveal / specials (all apply at start of NEXT round) -->
+          <div class="section-title" style="margin-top:10px;">Round Effects (Next Round)</div>
+          <button id="gm-reveal-dots-btn">Room Reveal</button>
+          <button id="gm-shove-btn" style="margin-left:6px;">The Shove in the Dark</button>
+          <button id="gm-killer-gaze-btn" style="margin-top:6px;">Killer's Gaze</button>
+          <button id="gm-scream-btn" style="margin-left:6px;margin-top:6px;">Screams</button>
+<button id="gm-killer-clues-btn" style="margin-top:6px;">
+  Toggle Killer Room Clues
+</button>
+
+          <!-- Instant scatter button -->
+          <button id="gm-scatter-now-btn" style="margin-top:8px;">Scatter Players Now</button>
+
+          <button id="gm-randomize-btn" style="margin-top:10px;">Randomize Roles</button>
 
           <div id="gm-status" class="status"></div>
         </div>
@@ -701,7 +784,6 @@
             <thead>
               <tr>
                 <th>Name</th>
-                <th>PIN</th>
                 <th>Moved?</th>
               </tr>
             </thead>
@@ -713,7 +795,6 @@
             <thead>
               <tr>
                 <th>Name</th>
-                <th>PIN</th>
                 <th>Voted?</th>
               </tr>
             </thead>
@@ -785,6 +866,19 @@
     let playerPollTimer = null;
     let gmPollTimer = null;
 
+    // per-effect popup tracking (per round)
+    const popupRounds = {
+      death: null,
+      roomReveal: null,
+      shove: null,
+      killerGaze: null,
+      scream: null
+    };
+
+    // GM timer
+    let gmTimerInterval = null;
+    let gmTimerRemaining = 120;
+
     function setRoundLabel(round) {
       state.round = round;
       const pill = document.getElementById('round-pill');
@@ -833,6 +927,29 @@
     function loadPlayerFromStorage() {
       return localStorage.getItem('mh_pin') || null;
     }
+
+    /* -------- Popup helpers -------- */
+
+    function showGlobalPopup(title, body) {
+      const overlay = document.getElementById('global-popup-overlay');
+      const titleEl = document.getElementById('global-popup-title');
+      const bodyEl = document.getElementById('global-popup-body');
+      if (!overlay || !titleEl || !bodyEl) return;
+
+      titleEl.textContent = title || '';
+      bodyEl.textContent = body || '';
+      overlay.classList.remove('hidden');
+    }
+
+    function hideGlobalPopup() {
+      const overlay = document.getElementById('global-popup-overlay');
+      if (!overlay) return;
+      overlay.classList.add('hidden');
+    }
+
+    document.getElementById('global-popup-close').addEventListener('click', () => {
+      hideGlobalPopup();
+    });
 
     /* -------- Player helpers -------- */
 
@@ -1004,6 +1121,7 @@
         killBtn.disabled = false;
       }
     }
+
     function startPlayerPolling(pin) {
       if (playerPollTimer) clearInterval(playerPollTimer);
       playerPollTimer = setInterval(async () => {
@@ -1025,13 +1143,18 @@
     }
 
     function applyPlayerState(payload) {
+      const prevPlayer = state.player;
+      const prevAlive = prevPlayer ? prevPlayer.alive : null;
+      const prevRound = state.round;
+
+      setRoundLabel(payload.round);
+
       const p = payload.player;
       state.player = p;
       state.pin = p.pin;
       state.revealDots = !!payload.revealDots;
 
       savePlayerToStorage(state.pin);
-      setRoundLabel(payload.round);
 
       document.getElementById('player-name-label').textContent = p.name;
       document.getElementById('player-role-label').textContent = p.role;
@@ -1044,9 +1167,59 @@
         else deadBanner.classList.remove('hidden');
       }
 
+      // Death popup – only when a Victim flips from alive -> dead
+      if (
+        prevPlayer &&
+        prevAlive === true &&
+        p.alive === false &&
+        p.role === 'Victim' &&
+        popupRounds.death !== payload.round
+      ) {
+        popupRounds.death = payload.round;
+        showGlobalPopup('SHH.. you are now dead.', 'You may not speak, gesture, or hint. Watch in silence.');
+      }
+
       const killSection = document.getElementById('kill-section');
       if (killSection) {
         killSection.style.display = (p.role === 'Killer') ? 'block' : 'none';
+      }
+
+      const effects = payload.effects || {};
+
+      // Room Reveal popup – at start of the round when effect is active
+      if (effects.roomReveal && popupRounds.roomReveal !== payload.round) {
+        popupRounds.roomReveal = payload.round;
+        showGlobalPopup(
+          'Room Reveal',
+          'The restless spirits whisper your positions into the open. All players position revealed this round.'
+        );
+      }
+
+      // Shove in the Dark popup
+      if (effects.shove && popupRounds.shove !== payload.round) {
+        popupRounds.shove = payload.round;
+        showGlobalPopup(
+          'The Shove in the Dark',
+          'A violent push from nowhere sends you stumbling into another room. All players randomly relocated.'
+        );
+      }
+
+      // Killer’s Gaze popup
+      if (effects.killerGaze && popupRounds.killerGaze !== payload.round) {
+        popupRounds.killerGaze = payload.round;
+        showGlobalPopup(
+          'Nowhere to hide',
+          'No hiding - only the Killer\'s gaze. The killer can see all players positions.'
+        );
+      }
+
+      // Screams popup
+      if (effects.scream && popupRounds.scream !== payload.round) {
+        popupRounds.scream = payload.round;
+        showGlobalPopup(
+          'Screams of the Stolen Lives',
+          'Souls cheated of choice scream with rage, overwhelming the living. NO DISCUSSION THIS ROUND. MOVE AND VOTE.'
+        );
       }
 
       populateRoomState(
@@ -1252,7 +1425,7 @@
 
       setStatus(
         'player-status',
-        json.message || 'Your attempt has been recorded. Only the GM knows what happened.',
+        json.message || 'Your strike lands. The house will notice soon enough.',
         false
       );
       applyPlayerState(stateJson);
@@ -1370,12 +1543,8 @@
 
           setStatus('gm-status', 'Player removed.', false);
 
-          const { json: rosterJson } = await fetchJSON('/api/gm/roster');
-          if (rosterJson && rosterJson.ok) {
-            setRoundLabel(rosterJson.round);
-            renderGmRoster(rosterJson.players);
-            await refreshGmSummaryAndTables();
-          }
+          // Refresh via GM summary
+          await refreshGmSummaryAndTables();
         });
         tdRemove.appendChild(delBtn);
         tr.appendChild(tdRemove);
@@ -1393,6 +1562,9 @@
 
       setRoundLabel(json.round);
 
+      // Always refresh roster from summary players
+      renderGmRoster(json.players || []);
+
       const rooms = json.rooms || [];
       const roomNamesBody = document.querySelector('#gm-room-names-table tbody');
       roomNamesBody.innerHTML = '';
@@ -1407,12 +1579,24 @@
             .map(p => `${p.name} (${p.alive ? 'alive' : 'dead'})`)
             .join(', ') || '—';
 
-          const cluesText = (r.clues || []).length
-            ? r.clues.map(c => `"${c}"`).join(' / ')
-            : '—';
+          const cluesArr = r.clues || [];
+          let cluesHtml = '—';
+          if (cluesArr.length) {
+            const parts = cluesArr.map(c => {
+              if (typeof c === 'string') {
+                return `"${c}"`;
+              }
+              const text = c.text || '';
+              if (c.collectedByVictim) {
+                return `<span class="clue-collected">"${text}"</span>`;
+              }
+              return `"${text}"`;
+            });
+            cluesHtml = parts.join(' / ');
+          }
 
           const tr = document.createElement('tr');
-          tr.innerHTML = `<td>${r.room}</td><td>${names}</td><td>${cluesText}</td>`;
+          tr.innerHTML = `<td>${r.room}</td><td>${names}</td><td>${cluesHtml}</td>`;
           roomNamesBody.appendChild(tr);
         });
       }
@@ -1436,9 +1620,7 @@
         });
       });
 
-      const allPlayers = (state.gmPlayers && state.gmPlayers.length)
-        ? state.gmPlayers
-        : (json.players || []);
+      const allPlayers = json.players || [];
 
       const notMovedPins = new Set((json.notMoved || []).map(p => String(p.pin)));
       const notVotedPins = new Set((json.notVoted || []).map(p => String(p.pin)));
@@ -1450,11 +1632,11 @@
 
       if (!allPlayers.length) {
         const tr1 = document.createElement('tr');
-        tr1.innerHTML = '<td colspan="3">No players yet.</td>';
+        tr1.innerHTML = '<td colspan="2">No players yet.</td>';
         movesBody.appendChild(tr1);
 
         const tr2 = document.createElement('tr');
-        tr2.innerHTML = '<td colspan="3">No players yet.</td>';
+        tr2.innerHTML = '<td colspan="2">No players yet.</td>';
         votesBody.appendChild(tr2);
       } else {
         allPlayers.forEach(p => {
@@ -1464,14 +1646,14 @@
           const moveTr = document.createElement('tr');
           const moveStatus = moved ? 'Moved' : 'Not moved';
           const moveClass = moved ? 'status-good' : 'status-bad';
-          moveTr.innerHTML = `<td>${p.name}</td><td>${p.pin}</td><td class="${moveClass}">${moveStatus}</td>`;
+          moveTr.innerHTML = `<td>${p.name}</td><td class="${moveClass}">${moveStatus}</td>`;
           movesBody.appendChild(moveTr);
 
           const voted = !notVotedPins.has(pinStr);
           const voteTr = document.createElement('tr');
           const voteStatus = voted ? 'Voted' : 'Not voted';
           const voteClass = voted ? 'status-good' : 'status-bad';
-          voteTr.innerHTML = `<td>${p.name}</td><td>${p.pin}</td><td class="${voteClass}">${voteStatus}</td>`;
+          voteTr.innerHTML = `<td>${p.name}</td><td class="${voteClass}">${voteStatus}</td>`;
           votesBody.appendChild(voteTr);
         });
       }
@@ -1500,7 +1682,7 @@
           const list = document.createElement('ul');
           attempts.forEach(k => {
             const li = document.createElement('li');
-            const resolvedText = k.resolved ? ' (revealed as dead after votes)' : ' (pending until all votes)';
+            const resolvedText = k.resolved ? ' (victim already dead)' : ' (pending)';
             li.textContent = `Killer attempted kill on ${k.victimName} in ${k.room}${resolvedText}`;
             list.appendChild(li);
           });
@@ -1516,6 +1698,58 @@
         if (document.getElementById('gm-view').classList.contains('hidden')) return;
         await refreshGmSummaryAndTables();
       }, 4000);
+    }
+
+    /* -------- GM Timer helpers -------- */
+
+    function formatSeconds(sec) {
+      const s = Math.max(0, Math.floor(sec));
+      const m = Math.floor(s / 60);
+      const ss = s % 60;
+      return `${String(m).padStart(2, '0')}:${String(ss).padStart(2, '0')}`;
+    }
+
+    function updateGmTimerDisplay() {
+      const display = document.getElementById('gm-timer-display');
+      if (!display) return;
+      display.textContent = formatSeconds(gmTimerRemaining);
+    }
+
+    function startGmTimer() {
+      const input = document.getElementById('gm-timer-input');
+      const value = parseInt(input.value, 10);
+      if (isNaN(value) || value <= 0) {
+        setStatus('gm-status', 'Enter a positive number of seconds for the timer.', true);
+        return;
+      }
+      gmTimerRemaining = value;
+      updateGmTimerDisplay();
+
+      if (gmTimerInterval) clearInterval(gmTimerInterval);
+      gmTimerInterval = setInterval(() => {
+        gmTimerRemaining -= 1;
+        updateGmTimerDisplay();
+        if (gmTimerRemaining <= 0) {
+          gmTimerRemaining = 0;
+          updateGmTimerDisplay();
+          clearInterval(gmTimerInterval);
+          gmTimerInterval = null;
+        }
+      }, 1000);
+    }
+
+    function stopGmTimer() {
+      if (gmTimerInterval) {
+        clearInterval(gmTimerInterval);
+        gmTimerInterval = null;
+      }
+    }
+
+    function resetGmTimer() {
+      stopGmTimer();
+      const input = document.getElementById('gm-timer-input');
+      gmTimerRemaining = parseInt(input.value, 10) || 120;
+      updateGmTimerDisplay();
     }
 
     /* -------- GM: unlock & buttons -------- */
@@ -1544,19 +1778,8 @@
       renderGmRoster(json.players);
       await refreshGmSummaryAndTables();
       show('gm');
+      updateGmTimerDisplay();
       startGmPolling();
-    });
-
-    document.getElementById('gm-refresh-btn').addEventListener('click', async () => {
-      const { json } = await fetchJSON('/api/gm/roster');
-      if (!json.ok) {
-        setStatus('gm-status', json.error || 'Error refreshing GM state.', true);
-        return;
-      }
-
-      setRoundLabel(json.round);
-      renderGmRoster(json.players);
-      await refreshGmSummaryAndTables();
     });
 
     document.getElementById('gm-randomize-btn').addEventListener('click', async () => {
@@ -1621,6 +1844,28 @@
       );
     });
 
+    // Toggle whether Killer can see clues in rooms
+document.getElementById('gm-killer-clues-btn').addEventListener('click', async () => {
+  const { json } = await fetchJSON('/api/gm/toggleKillerClues', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' }
+  });
+
+  if (!json.ok) {
+    setStatus('gm-status', json.error || 'Error toggling killer clues.', true);
+    return;
+  }
+
+  setStatus(
+    'gm-status',
+    json.killerSeesClues
+      ? 'Killers can now see clue fragments in their current room.'
+      : 'Killers can no longer see clue fragments in their current room.',
+    false
+  );
+});
+
+    // Room Reveal (next round)
     document.getElementById('gm-reveal-dots-btn').addEventListener('click', async () => {
       const { json } = await fetchJSON('/api/gm/toggleRevealDots', {
         method: 'POST',
@@ -1628,32 +1873,98 @@
       });
 
       if (!json.ok) {
-        setStatus('gm-status', json.error || 'Error toggling player dots.', true);
+        setStatus('gm-status', json.error || 'Error toggling Room Reveal.', true);
         return;
       }
 
-      state.revealDots = json.revealDots;
       setStatus(
         'gm-status',
-        json.revealDots ? 'Players now see global dots.' : 'Players no longer see global dots.',
+        json.revealDotsNextRound
+          ? 'Room Reveal armed for the next round.'
+          : 'Room Reveal cleared for the next round.',
         false
       );
     });
 
-    // GM: generate clues from secret sentence
+    // Shove in the Dark (next round)
+    document.getElementById('gm-shove-btn').addEventListener('click', async () => {
+      const { json } = await fetchJSON('/api/gm/toggleShove', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
+
+      if (!json.ok) {
+        setStatus('gm-status', json.error || 'Error toggling Shove in the Dark.', true);
+        return;
+      }
+
+      setStatus(
+        'gm-status',
+        json.shoveNextRound
+          ? '"The Shove in the Dark" armed for the next round.'
+          : '"The Shove in the Dark" cleared for the next round.',
+        false
+      );
+    });
+
+    // Killer's Gaze (next round)
+    document.getElementById('gm-killer-gaze-btn').addEventListener('click', async () => {
+      const { json } = await fetchJSON('/api/gm/toggleKillerGaze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
+
+      if (!json.ok) {
+        setStatus('gm-status', json.error || 'Error toggling Killer\'s Gaze.', true);
+        return;
+      }
+
+      setStatus(
+        'gm-status',
+        json.killerVisionNextRound
+          ? '"Killer\'s Gaze" armed for the next round.'
+          : '"Killer\'s Gaze" cleared for the next round.',
+        false
+      );
+    });
+
+    // Screams (next round)
+    document.getElementById('gm-scream-btn').addEventListener('click', async () => {
+      const { json } = await fetchJSON('/api/gm/toggleScream', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
+
+      if (!json.ok) {
+        setStatus('gm-status', json.error || 'Error toggling Screams.', true);
+        return;
+      }
+
+      setStatus(
+        'gm-status',
+        json.screamNextRound
+          ? '"Screams" armed for the next round.'
+          : '"Screams" cleared for the next round.',
+        false
+      );
+    });
+
+    // 🔴 Scatter Clues button (this was missing – now wired up)
     document.getElementById('gm-generate-clues-btn').addEventListener('click', async () => {
-      const sentence = document.getElementById('gm-secret-sentence').value.trim();
+      const input = document.getElementById('gm-secret-sentence');
+      const sentence = input.value.trim();
+
       if (!sentence) {
         setStatus('gm-clues-status', 'Enter a secret sentence first.', true);
         return;
       }
 
-      setStatus('gm-clues-status', 'Generating clues and scattering them across rooms…', false);
+      setStatus('gm-clues-status', 'Scattering clues across the house…', false);
 
       const { json } = await fetchJSON('/api/gm/generateClues', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sentence })
+        body: JSON.stringify({ sentence: sentence })
       });
 
       if (!json.ok) {
@@ -1661,8 +1972,50 @@
         return;
       }
 
-      setStatus('gm-clues-status', 'Clues generated and assigned (2 per room).', false);
+      // If server echoes the sentence back, keep them in sync
+      if (json.secretSentence) {
+        input.value = json.secretSentence;
+      }
+
+      setStatus(
+        'gm-clues-status',
+        json.message || 'Clues generated and scattered into the rooms.',
+        false
+      );
+
       await refreshGmSummaryAndTables();
+    });
+
+    // Instant scatter button
+    document.getElementById('gm-scatter-now-btn').addEventListener('click', async () => {
+      const { json } = await fetchJSON('/api/gm/scatterPlayers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({})
+      });
+
+      if (!json.ok) {
+        setStatus('gm-status', json.error || 'Error scattering players.', true);
+        return;
+      }
+
+      setStatus(
+        'gm-status',
+        `Scattered ${json.scattered} player(s) evenly and randomly across rooms.`,
+        false
+      );
+      await refreshGmSummaryAndTables();
+    });
+
+    // GM timer buttons
+    document.getElementById('gm-timer-start-btn').addEventListener('click', () => {
+      startGmTimer();
+    });
+    document.getElementById('gm-timer-stop-btn').addEventListener('click', () => {
+      stopGmTimer();
+    });
+    document.getElementById('gm-timer-reset-btn').addEventListener('click', () => {
+      resetGmTimer();
     });
 
     // Auto-rejoin if stored PIN

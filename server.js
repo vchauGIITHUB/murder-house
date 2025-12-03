@@ -5,7 +5,6 @@ const path = require('path');
 const app = express();
 const PORT = process.env.PORT || 4000;
 
-
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
@@ -22,11 +21,13 @@ const ROOMS = [
   'THE IRON CHAMBER'
 ];
 
+// Updated connections:
+// - Parlor of Echoes connects to Silent Bedroom + Blood-Stained Kitchen
+// - Blood-Stained Kitchen connects to Whispering Hall + Parlor
 const ROOM_CONNECTIONS = {
   'WHISPERING HALL': [
     'THE FLICKERING LAMP STUDY',
     'THE SILENT BEDROOM',
-    'PARLOR OF ECHOES',
     'THE BLOOD-STAINED KITCHEN',
     'THE UNDERHOUSE'
   ],
@@ -40,7 +41,6 @@ const ROOM_CONNECTIONS = {
     'PARLOR OF ECHOES'
   ],
   'PARLOR OF ECHOES': [
-    'WHISPERING HALL',
     'THE SILENT BEDROOM',
     'THE BLOOD-STAINED KITCHEN'
   ],
@@ -71,18 +71,42 @@ const GM_PIN = '1313';
 function createFreshGame() {
   return {
     round: 1,
-    players: [],   // { id, name, pin, role, alive, room, clues: [] }
+    players: [],   // { id, name, pin, role, alive, room, startRoom, clues: [], _hasMovedYet }
     moves: [],     // { round, pin, from, to }
     votes: [],     // { round, voterPin, targetPin }
     kills: [],     // { round, room, victimPin, resolved }
+
+    // Room reveal (global) – active this round
     revealDots: false,
-    clues: null    // { sentence, fragments, perRoom: { room: [clue1, clue2] } }
+    revealDotsNextRound: false,
+
+    // Killer’s Gaze – killer-only map vision
+    killerVision: false,
+    killerVisionNextRound: false,
+
+    // Screams of the Stolen (popup only)
+    screamActive: false,
+    screamNextRound: false,
+
+    // The Shove in the Dark (random scatter at round start)
+    shoveNextRound: false,
+    shoveTriggeredRound: null, // round when shove fired
+
+    // Killer clue visibility (GM can toggle any time)
+    killerSeesClues: true,
+
+    // Clue system
+    // clues.perRoom[room] = [ text|null, text|null ]
+    clues: null, // { sentence, perRoom: { room: [text|null, text|null] } }
+
+    // not really used anymore, but kept so removePlayer can safely filter
+    claimedClues: []
   };
 }
 
 let gameState = createFreshGame();
 
-/* ------------------ HELPERS ------------------ */
+/* ------------------ BASIC HELPERS ------------------ */
 
 function findPlayerByPin(pin) {
   return gameState.players.find(p => String(p.pin) === String(pin));
@@ -130,7 +154,28 @@ function getRoomDescription(room) {
 
 /* ---------- CLUE HELPERS ---------- */
 
-// Split sentence into evenly sized fragments, all unique (no repeats)
+// Put a dead player's clues back into the house
+function returnCluesToRooms(player) {
+  if (!player || !player.clues || !gameState.clues || !gameState.clues.perRoom) return;
+
+  player.clues.forEach(c => {
+    if (!c || !c.room || !c.text) return;
+
+    const slots = gameState.clues.perRoom[c.room];
+    if (!Array.isArray(slots)) return;
+
+    // Put clue back in the first empty slot, if any
+    const emptyIndex = slots.indexOf(null);
+    if (emptyIndex !== -1) {
+      slots[emptyIndex] = c.text;
+    }
+  });
+
+  // Clear the player’s personal clue list
+  player.clues = [];
+}
+
+// Split sentence into evenly sized fragments, all unique
 function generateClueFragments(sentenceRaw) {
   const sentence = String(sentenceRaw || '').trim().replace(/\s+/g, ' ');
   if (!sentence) return [];
@@ -138,7 +183,6 @@ function generateClueFragments(sentenceRaw) {
   const words = sentence.split(' ');
   const maxFragments = ROOMS.length * 2;       // 2 slots per room total
   const fragmentCount = Math.min(maxFragments, words.length);
-
   if (fragmentCount <= 0) return [];
 
   const fragments = [];
@@ -146,7 +190,6 @@ function generateClueFragments(sentenceRaw) {
   let remainder = words.length % fragmentCount;
   let index = 0;
 
-  // Chunk into fragmentCount pieces with sizes as even as possible
   for (let i = 0; i < fragmentCount; i++) {
     let size = baseSize;
     if (remainder > 0) {
@@ -159,7 +202,6 @@ function generateClueFragments(sentenceRaw) {
       fragments.push(partWords.join(' '));
     }
   }
-
   return fragments;
 }
 
@@ -171,49 +213,39 @@ function shuffleArray(arr) {
   return arr;
 }
 
-// Called when GM generates clues from the secret sentence
-function assignCluesForSentence(sentenceRaw) {
+// GM scatters clues from a secret sentence (2 per room, randomly)
+function scatterCluesFromSentence(sentenceRaw) {
   const sentence = String(sentenceRaw || '').trim().replace(/\s+/g, ' ');
-  if (!sentence) {
-    throw new Error('Secret sentence cannot be empty.');
-  }
+  if (!sentence) throw new Error('Secret sentence cannot be empty.');
 
+  // Break sentence into fragments
   let fragments = generateClueFragments(sentence);
-  if (!fragments.length) {
-    throw new Error('Could not break sentence into fragments.');
-  }
-
-  // Randomize fragment order before assigning to rooms
   fragments = shuffleArray(fragments.slice());
 
   const perRoom = {};
-  const totalSlots = ROOMS.length * 2; // 2 per room
   let idx = 0;
 
+  // Assign 2 clues per room
   ROOMS.forEach(room => {
-    const roomFragments = [];
+    perRoom[room] = [];
+
     for (let i = 0; i < 2; i++) {
       if (idx < fragments.length) {
-        roomFragments.push(fragments[idx]);
+        perRoom[room].push(fragments[idx]);
         idx++;
       } else {
-        // No more fragments – slot stays empty
-        roomFragments.push(null);
+        perRoom[room].push(null); // fewer fragments than slots
       }
     }
-    perRoom[room] = roomFragments;
   });
+
+  // Reset clue inventory on all players
+  gameState.players.forEach(p => (p.clues = []));
 
   gameState.clues = {
     sentence,
-    fragments,
     perRoom
   };
-
-  // Reset collected clues for all players
-  gameState.players.forEach(p => {
-    p.clues = [];
-  });
 
   return gameState.clues;
 }
@@ -224,71 +256,69 @@ function ensurePlayerClueArray(player) {
   }
 }
 
-/**
- * Decide if a victim can retrieve a clue in this room.
- *
- * Normal rule: 1 clue per room per victim.
- * Adjustment: when there are fewer living victims than total clues already retrieved,
- * allow extra clues, but only to victims with the fewest clues overall.
- */
-function canRetrieveClue(player, room) {
-  if (!gameState.clues || !gameState.clues.perRoom) return false;
-  const roomClues = (gameState.clues.perRoom[room] || []).filter(Boolean);
-  if (!roomClues.length) return false;
-
-  ensurePlayerClueArray(player);
-
-  const livingVictims = gameState.players.filter(
-    p => p.alive && p.role === 'Victim'
-  );
-  if (!livingVictims.length) return false;
-
-  const totalCluesClaimed = livingVictims.reduce(
-    (sum, p) => sum + (Array.isArray(p.clues) ? p.clues.length : 0),
-    0
-  );
-
-  const playerCluesInRoom = player.clues.filter(c => c.room === room).length;
-
-  // Base rule: max 1 clue per room per victim
-  if (playerCluesInRoom === 0) return true;
-
-  // Adjustment rule: if the group is shrinking relative to clues claimed,
-  // let lowest-clue victims grab extra to keep it solvable.
-  if (livingVictims.length < totalCluesClaimed) {
-    const counts = livingVictims.map(
-      p => (Array.isArray(p.clues) ? p.clues.length : 0)
-    );
-    const minClues = Math.min(...counts);
-    const playerTotal = player.clues.length;
-    return playerTotal === minClues;
-  }
-
-  return false;
-}
-
-// Auto-give a clue when a living Victim enters a room
-function maybeGiveClueOnMove(player, room) {
+// Victims receive 1 clue per player per room
+function maybeGiveClueOnMove(player, newRoom) {
   if (!player.alive) return null;
   if (player.role !== 'Victim') return null;
   if (!gameState.clues || !gameState.clues.perRoom) return null;
 
-  const roomClues = (gameState.clues.perRoom[room] || []).filter(Boolean);
+  // Track that they have moved at least once (may be used by future effects)
+  if (!player._hasMovedYet) {
+    player._hasMovedYet = true;
+  }
+
+  const roomSlots = gameState.clues.perRoom[newRoom] || [];
+  const roomClues = roomSlots.filter(Boolean); // non-null
   if (!roomClues.length) return null;
 
-  if (!canRetrieveClue(player, room)) return null;
+  // Have they already collected a clue from this room?
+  const already = (player.clues || []).filter(c => c.room === newRoom);
+  if (already.length >= 1) return null;
 
+  // Choose the first available clue
+  const chosen = roomClues[0];
+  if (!chosen) return null;
+
+  // Record on player
   ensurePlayerClueArray(player);
+  player.clues.push({ room: newRoom, text: chosen });
 
-  const alreadyTexts = new Set(
-    player.clues.filter(c => c.room === room).map(c => c.text)
-  );
-  const unseen = roomClues.filter(text => !alreadyTexts.has(text));
-  const chosen = unseen.length ? unseen[0] : roomClues[0];
-
-  player.clues.push({ room, text: chosen });
+  // Remove from room so other players cannot take it
+  const index = roomSlots.indexOf(chosen);
+  if (index !== -1) {
+    roomSlots[index] = null;
+  }
 
   return chosen;
+}
+
+/* ---------- PLAYER SCATTER HELPERS ---------- */
+
+/**
+ * Scatter players so that:
+ *  - Each selected player goes to a RANDOM room
+ *  - That room is NEVER the same as their previous room (if possible)
+ *  - Multiple players may share the same room
+ */
+function scatterPlayersNoSameRoom(includeDead = false) {
+  const pool = gameState.players.filter(p => (includeDead ? true : p.alive));
+  if (!pool.length) return 0;
+
+  pool.forEach(p => {
+    const prevRoom = p.room || START_ROOM;
+    const possibleRooms = ROOMS.filter(r => r !== prevRoom);
+
+    // Just in case (we always have >=2 rooms, but be safe)
+    const targetPool = possibleRooms.length ? possibleRooms : ROOMS;
+    const nextRoom = targetPool[Math.floor(Math.random() * targetPool.length)];
+
+    p.room = nextRoom;
+    if (!p.startRoom) {
+      p.startRoom = START_ROOM;
+    }
+  });
+
+  return pool.length;
 }
 
 /* ------------------ GM ROUTES ------------------ */
@@ -323,6 +353,8 @@ app.post('/api/gm/updatePlayer', (req, res) => {
     return res.status(400).json({ ok: false, error: 'Player not found.' });
   }
 
+  const wasAlive = player.alive;
+
   if (role) {
     if (!['Unknown', 'Victim', 'Killer'].includes(role)) {
       return res.status(400).json({ ok: false, error: 'Invalid role.' });
@@ -332,6 +364,11 @@ app.post('/api/gm/updatePlayer', (req, res) => {
 
   if (alive !== undefined) {
     player.alive = !!alive;
+  }
+
+  // If GM just switched them from alive → dead, return their clues to rooms
+  if (wasAlive && !player.alive) {
+    returnCluesToRooms(player);
   }
 
   res.json({ ok: true, player });
@@ -359,6 +396,9 @@ app.post('/api/gm/removePlayer', (req, res) => {
   gameState.kills = gameState.kills.filter(
     k => String(k.victimPin) !== String(removed.pin)
   );
+  gameState.claimedClues = (gameState.claimedClues || []).filter(
+    c => String(c.pin) !== String(removed.pin)
+  );
 
   res.json({ ok: true });
 });
@@ -380,9 +420,31 @@ app.post('/api/gm/randomizeRoles', (req, res) => {
   res.json({ ok: true, players: gameState.players });
 });
 
-// Next round
+// Next round – applies "next round" effects and optional shove.
 app.post('/api/gm/nextRound', (req, res) => {
   gameState.round += 1;
+
+  // Apply Room Reveal for this round (then reset the "armed" flag)
+  gameState.revealDots = !!gameState.revealDotsNextRound;
+  gameState.revealDotsNextRound = false;
+
+  // Apply Killer's Gaze for this round
+  gameState.killerVision = !!gameState.killerVisionNextRound;
+  gameState.killerVisionNextRound = false;
+
+  // Apply Screams of the Stolen for this round
+  gameState.screamActive = !!gameState.screamNextRound;
+  gameState.screamNextRound = false;
+
+  // Shove in the Dark: scatter players at start of THIS new round
+  if (gameState.shoveNextRound) {
+    scatterPlayersNoSameRoom(false);
+    gameState.shoveTriggeredRound = gameState.round;
+  } else {
+    gameState.shoveTriggeredRound = null;
+  }
+  gameState.shoveNextRound = false;
+
   res.json({ ok: true, round: gameState.round });
 });
 
@@ -392,27 +454,55 @@ app.post('/api/gm/newGame', (req, res) => {
   res.json({ ok: true, round: gameState.round });
 });
 
-// Toggle whether players see global dots
+// Room Reveal toggle – arm effect for NEXT round only
 app.post('/api/gm/toggleRevealDots', (req, res) => {
-  gameState.revealDots = !gameState.revealDots;
-  res.json({ ok: true, revealDots: gameState.revealDots });
+  gameState.revealDotsNextRound = !gameState.revealDotsNextRound;
+  res.json({ ok: true, revealDotsNextRound: gameState.revealDotsNextRound });
 });
 
-// GM generates clue fragments from secret sentence
+// Killer's Gaze – arm for next round
+app.post('/api/gm/toggleKillerGaze', (req, res) => {
+  gameState.killerVisionNextRound = !gameState.killerVisionNextRound;
+  res.json({ ok: true, killerVisionNextRound: gameState.killerVisionNextRound });
+});
+
+// Screams of the Stolen – arm for next round
+app.post('/api/gm/toggleScream', (req, res) => {
+  gameState.screamNextRound = !gameState.screamNextRound;
+  res.json({ ok: true, screamNextRound: gameState.screamNextRound });
+});
+
+// The Shove in the Dark – arm scatter for next round
+app.post('/api/gm/toggleShove', (req, res) => {
+  gameState.shoveNextRound = !gameState.shoveNextRound;
+  res.json({ ok: true, shoveNextRound: gameState.shoveNextRound });
+});
+
+// 🔴 NEW: toggle whether the Killer can see room clues
+app.post('/api/gm/toggleKillerClues', (req, res) => {
+  gameState.killerSeesClues = !gameState.killerSeesClues;
+  res.json({ ok: true, killerSeesClues: gameState.killerSeesClues });
+});
+
+// Immediate scatter button (GM convenience)
+// Random, any room except the one they were just in.
+app.post('/api/gm/scatterPlayers', (req, res) => {
+  const { includeDead } = req.body || {};
+  const count = scatterPlayersNoSameRoom(!!includeDead);
+  if (!count) {
+    return res.status(400).json({ ok: false, error: 'No players to scatter.' });
+  }
+  res.json({ ok: true, scattered: count });
+});
+
+// GM: generate + scatter clues from secret sentence
 app.post('/api/gm/generateClues', (req, res) => {
+  const { sentence } = req.body || {};
   try {
-    const { sentence } = req.body || {};
-    const clues = assignCluesForSentence(sentence);
-    res.json({
-      ok: true,
-      sentence: clues.sentence,
-      fragments: clues.fragments,
-      perRoom: clues.perRoom
-    });
+    const clues = scatterCluesFromSentence(sentence);
+    res.json({ ok: true, clues, secretSentence: clues.sentence });
   } catch (err) {
-    res
-      .status(400)
-      .json({ ok: false, error: err.message || 'Error generating clues.' });
+    res.status(400).json({ ok: false, error: err.message || 'Error generating clues.' });
   }
 });
 
@@ -454,19 +544,6 @@ app.get('/api/gm/summary', (req, res) => {
     p => p.alive && !votedPins.has(String(p.pin))
   );
 
-  // Resolve pending kills only AFTER all living players have voted
-  if (notVoted.length === 0) {
-    gameState.kills
-      .filter(k => k.round === gameState.round && !k.resolved)
-      .forEach(k => {
-        const victim = findPlayerByPin(k.victimPin);
-        if (victim && victim.alive) {
-          victim.alive = false;
-        }
-        k.resolved = true;
-      });
-  }
-
   // Vote tallies for current round
   const votesThisRound = gameState.votes.filter(
     v => v.round === gameState.round
@@ -486,30 +563,30 @@ app.get('/api/gm/summary', (req, res) => {
     };
   });
 
-  // Kill attempts for this round (private to GM)
-  const killAttempts = gameState.kills
-    .filter(k => k.round === gameState.round)
-    .map(k => {
-      const victim = findPlayerByPin(k.victimPin);
-      return {
-        victimPin: k.victimPin,
-        victimName: victim ? victim.name : `PIN ${k.victimPin}`,
-        room: k.room,
-        resolved: !!k.resolved
-      };
-    });
+  const killAttempts = gameState.kills.filter(
+    k => k.round === gameState.round
+  );
+
+  const roomsSummary = ROOMS.map(room => {
+    const playersHere = perRoom[room] || [];
+    const roomSlots =
+      gameState.clues &&
+      gameState.clues.perRoom &&
+      (gameState.clues.perRoom[room] || []);
+
+    const cluesForDisplay = (roomSlots || []).filter(Boolean);
+
+    return {
+      room,
+      players: playersHere,
+      clues: cluesForDisplay
+    };
+  });
 
   res.json({
     ok: true,
     round: gameState.round,
-    rooms: ROOMS.map(room => ({
-      room,
-      players: perRoom[room] || [],
-      clues:
-        (gameState.clues &&
-          gameState.clues.perRoom &&
-          (gameState.clues.perRoom[room] || []).filter(Boolean)) || []
-    })),
+    rooms: roomsSummary,
     notMoved: notMoved.map(p => ({
       id: p.id,
       name: p.name,
@@ -530,12 +607,20 @@ app.get('/api/gm/summary', (req, res) => {
 
 /* ------------------ PLAYER ROUTES ------------------ */
 
-// Register
+// Register – blocked once round 2 has started
 app.post('/api/register', (req, res) => {
   const { name } = req.body || {};
   const trimmed = String(name || '').trim();
   if (!trimmed) {
     return res.status(400).json({ ok: false, error: 'Name is required.' });
+  }
+
+  // After round 1, no new registrations – only rejoin
+  if (gameState.round >= 2) {
+    return res.status(400).json({
+      ok: false,
+      error: 'Registration is closed once Round 2 begins. Use your PIN to rejoin, or wait for a new game.'
+    });
   }
 
   const id = gameState.players.length + 1;
@@ -548,7 +633,9 @@ app.post('/api/register', (req, res) => {
     role: 'Unknown',
     alive: true,
     room: START_ROOM,
-    clues: []
+    startRoom: START_ROOM,
+    clues: [],
+    _hasMovedYet: false
   };
 
   gameState.players.push(player);
@@ -573,6 +660,12 @@ app.post('/api/rejoin', (req, res) => {
   }
 
   ensurePlayerClueArray(player);
+  if (!player.startRoom) {
+    player.startRoom = START_ROOM;
+  }
+  if (typeof player._hasMovedYet !== 'boolean') {
+    player._hasMovedYet = false;
+  }
 
   res.json({
     ok: true,
@@ -595,9 +688,19 @@ app.post('/api/state', (req, res) => {
   }
 
   ensurePlayerClueArray(player);
+  if (!player.startRoom) {
+    player.startRoom = START_ROOM;
+  }
+
+  const room = player.room || START_ROOM;
+
+  // Should this player see global dots?
+  const showGlobalDotsForPlayer =
+    !!gameState.revealDots ||
+    (!!gameState.killerVision && player.role === 'Killer');
 
   let roomDots = null;
-  if (gameState.revealDots) {
+  if (showGlobalDotsForPlayer) {
     const rooms = {};
     ROOMS.forEach(r => {
       rooms[r] = 0;
@@ -610,13 +713,12 @@ app.post('/api/state', (req, res) => {
       rooms[r] += 1;
     });
 
-    roomDots = Object.keys(rooms).map(room => ({
-      room,
-      total: rooms[room]
+    roomDots = Object.keys(rooms).map(r => ({
+      room: r,
+      total: rooms[r]
     }));
   }
 
-  const room = player.room || START_ROOM;
   const allowedRooms = getAllowedRoomsFrom(room);
 
   const livingHere = gameState.players.filter(
@@ -661,18 +763,28 @@ app.post('/api/state', (req, res) => {
   // Clues visible in this room
   let roomCluesForViewer = [];
   if (gameState.clues && gameState.clues.perRoom) {
-    const roomClues = (gameState.clues.perRoom[room] || []).filter(Boolean);
+    const roomSlots = gameState.clues.perRoom[room] || [];
 
-    if (player.role === 'Killer') {
-      // Killer sees both clues in this room
-      roomCluesForViewer = roomClues.slice();
+    if (player.role === 'Killer' && gameState.killerSeesClues) {
+      // Killer sees the fragments still in this room (strings)
+      roomCluesForViewer = roomSlots.filter(Boolean);
+    } else if (player.role === 'Killer') {
+      // Killer clue vision disabled
+      roomCluesForViewer = [];
     } else {
-      // Victims only see clues they have retrieved in this room
+      // Victims only see clues they personally hold from this room
       roomCluesForViewer = (player.clues || [])
         .filter(c => c.room === room)
         .map(c => c.text);
     }
   }
+
+  const effects = {
+    roomReveal: !!gameState.revealDots,
+    killerGaze: !!gameState.killerVision,
+    scream: !!gameState.screamActive,
+    shove: !!(gameState.shoveTriggeredRound === gameState.round)
+  };
 
   res.json({
     ok: true,
@@ -696,9 +808,10 @@ app.post('/api/state', (req, res) => {
     roster,
     canKill,
     killTarget,
-    revealDots: gameState.revealDots,
+    revealDots: showGlobalDotsForPlayer,
     roomDots,
-    roomClues: roomCluesForViewer
+    roomClues: roomCluesForViewer,
+    effects
   });
 });
 
@@ -750,8 +863,11 @@ app.post('/api/move', (req, res) => {
   });
 
   player.room = dest;
+  if (!player.startRoom) {
+    player.startRoom = START_ROOM;
+  }
 
-  // Auto clue retrieval for Victims entering new room
+  // Auto clue retrieval when entering new room
   const clue = maybeGiveClueOnMove(player, dest);
 
   res.json({
@@ -806,7 +922,7 @@ app.post('/api/vote', (req, res) => {
   });
 });
 
-// Kill (hidden, pending until votes finished)
+// Kill – resolves immediately, and returns victim's clues to rooms
 app.post('/api/kill', (req, res) => {
   const { pin, targetPin } = req.body || {};
   const killer = findPlayerByPin(pin);
@@ -865,18 +981,20 @@ app.post('/api/kill', (req, res) => {
     });
   }
 
-  // Do NOT mark victim dead yet – just record a hidden kill attempt.
+  // Kill resolves immediately: victim is dead, clues go back to rooms.
+  victim.alive = false;
+  returnCluesToRooms(victim);
+
   gameState.kills.push({
     round: gameState.round,
     room: killer.room,
     victimPin: victim.pin,
-    resolved: false
+    resolved: true
   });
 
   res.json({
     ok: true,
-    message:
-      'Your kill attempt has been recorded. Only the GM knows who you tried to cut down.',
+    message: 'Your blade finds its mark. The room grows quieter.',
     victim: { name: victim.name, pin: victim.pin },
     room: killer.room
   });
