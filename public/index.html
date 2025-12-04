@@ -322,28 +322,40 @@
       animation: candle-flicker 1.7s infinite alternate;
       z-index: 5;
     }
-/* Mobile override – stronger glow */
+/* === Android & small-screen glow fix === */
 @media (max-width: 768px) {
   .player-map .candle-glow {
-    top: -4%;
-    right: 2%;
-    width: 190px;
-    height: 190px;
+    position: absolute;
 
-    /* Mobile engines often break blur + blend mode */
-    filter: none;
-    mix-blend-mode: normal;
+    /* adjust glow location */
+    top: -3.5%;        /* move slightly UP */
+    right: 17%;        /* move LEFT to align with candle */
 
-    background: radial-gradient(circle,
-      rgba(255, 245, 210, 1.0) 0%,
-      rgba(255, 220, 150, 0.9) 30%,
-      rgba(255, 180, 90, 0.55) 65%,
-      rgba(0, 0, 0, 0) 100%
+    /* adjust glow size */
+    width: 85px;
+    height: 85px;
+
+    border-radius: 50%;
+    pointer-events: none;
+
+    /* softer, dimmer glow */
+    background: radial-gradient(
+      circle,
+      rgba(255, 240, 200, 0.55) 0%,
+      rgba(255, 210, 130, 0.30) 35%,
+      rgba(255, 160, 80, 0.15) 60%,
+      rgba(0, 0, 0, 0) 85%
     );
 
-    opacity: 1;
+    opacity: 0.7;
+    filter: blur(0.8px);
+    mix-blend-mode: screen;
+
+    animation: candle-flicker 2s infinite alternate;
+    z-index: 5;
   }
 }
+
 
     @keyframes candle-flicker {
       0% {
