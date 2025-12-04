@@ -627,7 +627,7 @@
         <small>Enter your name to join this run. The GM will give you your PIN and role.</small>
 
         <label for="name-input">Your name</label>
-        <input id="name-input" placeholder="e.g., Theo" />
+        <input id="name-input" placeholder="e.g., Theo Chau" />
         <button id="join-btn">Join Game</button>
 
         <div class="section-title">Rejoin with PIN</div>
@@ -714,56 +714,63 @@
           </div>
 
           <div id="actions-card" class="card">
-            <h2>Actions</h2>
-            <small>Moves are secret. Kills are quieter.</small>
+  <h2>Actions</h2>
+  <small>Moves are secret. Kills are quieter.</small>
 
-            <div class="section-title">Move</div>
-            <label for="move-room-select">Choose adjacent room</label>
-            <select id="move-room-select">
-              <option value="">-- choose room --</option>
-            </select>
-            <button id="move-btn">Record Move</button>
-            <div id="killer-move-banner" class="muted hidden"></div>
+  <!-- MOVE SECTION -->
+  <div id="move-section">
+    <div class="section-title">Move</div>
+    <label for="move-room-select">Choose adjacent room</label>
+    <select id="move-room-select">
+      <option value="">-- choose room --</option>
+    </select>
+    <button id="move-btn">Record Move</button>
+    <div id="killer-move-banner" class="muted hidden"></div>
+  </div>
 
+  <!-- KILL SECTION (killer only, JS already hides/shows this) -->
+  <div id="kill-section">
+    <div class="section-title">Kill (Killer only)</div>
+    <small class="muted">
+      You may only strike if exactly one other living player shares this room, and all living players have moved this round.
+    </small>
+    <label for="kill-target-select" style="margin-top:6px;">Eligible victim in this room</label>
+    <select id="kill-target-select">
+      <option value="">-- no valid victim --</option>
+    </select>
+    <button id="kill-btn">Attempt Kill</button>
+  </div>
 
-            <div id="kill-section">
-              <div class="section-title">Kill (Killer only)</div>
-              <small class="muted">
-                You may only strike if exactly one other living player shares this room, and all living players have moved this round.
-              </small>
-              <label for="kill-target-select" style="margin-top:6px;">Eligible victim in this room</label>
-              <select id="kill-target-select">
-                <option value="">-- no valid victim --</option>
-              </select>
-              <button id="kill-btn">Attempt Kill</button>
-            </div>
+  <!-- VOTE SECTION -->
+  <div id="vote-section">
+    <div class="section-title">Vote</div>
+    <label for="vote-select">Accuse a player</label>
+    <select id="vote-select">
+      <option value="">-- choose someone --</option>
+    </select>
+    <button id="vote-btn">Record Vote</button>
+  </div>
 
-            <div class="section-title">Vote</div>
-            <label for="vote-select">Accuse a player</label>
-            <select id="vote-select">
-              <option value="">-- choose someone --</option>
-            </select>
-            <button id="vote-btn">Record Vote</button>
+  <!-- Ghost event voting (dead players only – JS toggles this separately) -->
+  <div id="ghost-event-block" class="hidden" style="margin-top:10px;">
+    <div class="section-title">Ghost Event Vote</div>
+    <small class="muted">
+      As a ghost, you may vote for a curse. The house triggers a ghost-chosen event every few rounds.
+    </small>
+    <label for="ghost-event-select" style="margin-top:6px;">Choose an event</label>
+    <select id="ghost-event-select">
+      <option value="">-- choose an event --</option>
+      <option value="shove">The Shove in the Dark</option>
+      <option value="scream">Screams</option>
+      <option value="reveal">Room Reveal</option>
+      <option value="gaze">Killer’s Gaze</option>
+    </select>
+    <button id="ghost-vote-btn">Cast Ghost Vote</button>
+  </div>
 
-            <!-- Ghost event voting (dead players only) -->
-            <div id="ghost-event-block" class="hidden" style="margin-top:10px;">
-              <div class="section-title">Ghost Event Vote</div>
-              <small class="muted">
-                As a ghost, you may vote for a curse. The house triggers a ghost-chosen event every few rounds.
-              </small>
-              <label for="ghost-event-select" style="margin-top:6px;">Choose an event</label>
-              <select id="ghost-event-select">
-                <option value="">-- choose an event --</option>
-                <option value="shove">The Shove in the Dark</option>
-                <option value="scream">Screams</option>
-                <option value="reveal">Room Reveal</option>
-                <option value="gaze">Killer’s Gaze</option>
-              </select>
-              <button id="ghost-vote-btn">Cast Ghost Vote</button>
-            </div>
+  <div id="player-status" class="status"></div>
+</div>
 
-            <div id="player-status" class="status"></div>
-          </div>
         </div>
       </div>
     </div>
@@ -1258,137 +1265,142 @@
     }
 
     function applyPlayerState(payload) {
-      const prevPlayer = state.player;
-      const prevAlive = prevPlayer ? prevPlayer.alive : null;
+  const prevPlayer = state.player;
+  const prevAlive = prevPlayer ? prevPlayer.alive : null;
 
-      setRoundLabel(payload.round);
+  setRoundLabel(payload.round);
 
-      const p = payload.player;
-      // Hide move & vote if the player is dead (victims or killers)
-const actionsCard = document.getElementById('actions-card');
+  const p = payload.player;
 
-if (!p.alive) {
-  // Player is dead → hide all actions except ghost event block
-  if (actionsCard) actionsCard.classList.add('hidden');
-} else {
-  // Player is alive → show normal action panel
-  if (actionsCard) actionsCard.classList.remove('hidden');
-}
+  // Hide *move / vote / kill* when dead, but keep Ghost Event visible
+  const moveSection  = document.getElementById('move-section');
+  const voteSection  = document.getElementById('vote-section');
+  const killSectionEl = document.getElementById('kill-section');
 
-      state.player = p;
-      state.pin = p.pin;
-      state.revealDots = !!payload.revealDots;
+  if (p.alive) {
+    if (moveSection) moveSection.classList.remove('hidden');
+    if (voteSection) voteSection.classList.remove('hidden'); // ✅ was moveSection before
+    if (killSectionEl) killSectionEl.classList.remove('hidden');
+  } else {
+    if (moveSection) moveSection.classList.add('hidden');
+    if (voteSection) voteSection.classList.add('hidden');
+    if (killSectionEl) killSectionEl.classList.add('hidden');
+  }
 
-      savePlayerToStorage(state.pin);
+  state.player = p;
+  state.pin = p.pin;
+  state.revealDots = !!payload.revealDots;
 
-      document.getElementById('player-name-label').textContent = p.name;
-      document.getElementById('player-role-label').textContent = p.role;
-      document.getElementById('player-pin-label').textContent = p.pin;
+  savePlayerToStorage(state.pin);
 
-      // DEAD banner visibility – only on this player's own screen
-      const deadBanner = document.getElementById('dead-banner');
-      if (deadBanner) {
-        if (p.alive) deadBanner.classList.add('hidden');
-        else deadBanner.classList.remove('hidden');
+  document.getElementById('player-name-label').textContent = p.name;
+  document.getElementById('player-role-label').textContent = p.role;
+  document.getElementById('player-pin-label').textContent = p.pin;
+
+  // DEAD banner visibility – only on this player's own screen
+  const deadBanner = document.getElementById('dead-banner');
+  if (deadBanner) {
+    if (p.alive) deadBanner.classList.add('hidden');
+    else deadBanner.classList.remove('hidden');
+  }
+
+  // Ghost event block (only for dead players)
+  const ghostBlock = document.getElementById('ghost-event-block');
+  if (ghostBlock) {
+    if (p.alive) ghostBlock.classList.add('hidden');
+    else ghostBlock.classList.remove('hidden');
+  }
+
+  // Death popup – only when a Victim flips from alive -> dead
+  if (
+    prevPlayer &&
+    prevAlive === true &&
+    p.alive === false &&
+    p.role === 'Victim' &&
+    popupRounds.death !== payload.round
+  ) {
+    popupRounds.death = payload.round;
+    showGlobalPopup('SHH.. you are now dead.', 'You may not speak, gesture, or hint. Watch in silence.');
+  }
+
+  const killSection = document.getElementById('kill-section');
+  if (killSection) {
+    killSection.style.display = (p.role === 'Killer') ? 'block' : 'none';
+  }
+
+  const effects = payload.effects || {};
+
+  // Room Reveal popup – at start of the round when effect is active
+  if (effects.roomReveal && popupRounds.roomReveal !== payload.round) {
+    popupRounds.roomReveal = payload.round;
+    showGlobalPopup(
+      'Room Reveal',
+      'The restless spirits whisper your positions into the open. All players position revealed this round.'
+    );
+  }
+
+  // Shove in the Dark popup
+  if (effects.shove && popupRounds.shove !== payload.round) {
+    popupRounds.shove = payload.round;
+    showGlobalPopup(
+      'The Shove in the Dark',
+      'A violent push from nowhere sends you stumbling into another room. All players randomly relocated.'
+    );
+  }
+
+  // Killer’s Gaze popup
+  if (effects.killerGaze && popupRounds.killerGaze !== payload.round) {
+    popupRounds.killerGaze = payload.round;
+    showGlobalPopup(
+      'Nowhere to hide',
+      'No hiding - only the Killer\'s gaze. The killer can see all players positions.'
+    );
+  }
+
+  // Screams popup
+  if (effects.scream && popupRounds.scream !== payload.round) {
+    popupRounds.scream = payload.round;
+    showGlobalPopup(
+      'Screams of the Stolen Lives',
+      'Souls cheated of choice scream with rage, overwhelming the living. NO DISCUSSION THIS ROUND. MOVE AND VOTE.'
+    );
+  }
+
+  populateRoomState(
+    payload.roomInfo,
+    payload.revealDots,
+    payload.roomDots,
+    payload.roomClues || [],
+    p.clues || []
+  );
+  populateAllowedRooms(payload.allowedRooms);
+  populateVoteDropdown(payload.roster, p.pin);
+  populateKillDropdown(payload.roomInfo, p.pin, payload.canKill);
+
+  // Killer move banner – based ONLY on victims moving
+  const killerBanner = document.getElementById('killer-move-banner');
+  if (killerBanner) {
+    killerBanner.classList.remove('waiting', 'ready');
+    killerBanner.classList.add('hidden');
+
+    if (p.role === 'Killer') {
+      killerBanner.classList.remove('hidden');
+
+      if (payload.allVictimsMoved) {
+        killerBanner.textContent = 'All victims have moved.';
+        killerBanner.classList.add('ready');
+      } else {
+        killerBanner.textContent = 'Wait… not all victims have moved yet.';
+        killerBanner.classList.add('waiting');
       }
-
-      // Ghost event block (only for dead players)
-      const ghostBlock = document.getElementById('ghost-event-block');
-      if (ghostBlock) {
-        if (p.alive) ghostBlock.classList.add('hidden');
-        else ghostBlock.classList.remove('hidden');
-      }
-
-      // Death popup – only when a Victim flips from alive -> dead
-      if (
-        prevPlayer &&
-        prevAlive === true &&
-        p.alive === false &&
-        p.role === 'Victim' &&
-        popupRounds.death !== payload.round
-      ) {
-        popupRounds.death = payload.round;
-        showGlobalPopup('SHH.. you are now dead.', 'You may not speak, gesture, or hint. Watch in silence.');
-      }
-
-      const killSection = document.getElementById('kill-section');
-      if (killSection) {
-        killSection.style.display = (p.role === 'Killer') ? 'block' : 'none';
-      }
-
-      const effects = payload.effects || {};
-
-      // Room Reveal popup – at start of the round when effect is active
-      if (effects.roomReveal && popupRounds.roomReveal !== payload.round) {
-        popupRounds.roomReveal = payload.round;
-        showGlobalPopup(
-          'Room Reveal',
-          'The restless spirits whisper your positions into the open. All players position revealed this round.'
-        );
-      }
-
-      // Shove in the Dark popup
-      if (effects.shove && popupRounds.shove !== payload.round) {
-        popupRounds.shove = payload.round;
-        showGlobalPopup(
-          'The Shove in the Dark',
-          'A violent push from nowhere sends you stumbling into another room. All players randomly relocated.'
-        );
-      }
-
-      // Killer’s Gaze popup
-      if (effects.killerGaze && popupRounds.killerGaze !== payload.round) {
-        popupRounds.killerGaze = payload.round;
-        showGlobalPopup(
-          'Nowhere to hide',
-          'No hiding - only the Killer\'s gaze. The killer can see all players positions.'
-        );
-      }
-
-      // Screams popup
-      if (effects.scream && popupRounds.scream !== payload.round) {
-        popupRounds.scream = payload.round;
-        showGlobalPopup(
-          'Screams of the Stolen Lives',
-          'Souls cheated of choice scream with rage, overwhelming the living. NO DISCUSSION THIS ROUND. MOVE AND VOTE.'
-        );
-      }
-
-      populateRoomState(
-        payload.roomInfo,
-        payload.revealDots,
-        payload.roomDots,
-        payload.roomClues || [],
-        p.clues || []
-      );
-      populateAllowedRooms(payload.allowedRooms);
-      populateVoteDropdown(payload.roster, p.pin);
-      populateKillDropdown(payload.roomInfo, p.pin, payload.canKill);
-      // Killer move banner – based ONLY on victims moving
-const killerBanner = document.getElementById('killer-move-banner');
-if (killerBanner) {
-  // reset state
-  killerBanner.classList.remove('waiting', 'ready');
-  killerBanner.classList.add('hidden');
-
-  if (p.role === 'Killer') {
-    killerBanner.classList.remove('hidden');
-
-    // 🔴 IMPORTANT: use allVictimsMoved, not allPlayersMoved
-    if (payload.allVictimsMoved) {
-      killerBanner.textContent = 'All victims have moved.';
-      killerBanner.classList.add('ready');
-    } else {
-      killerBanner.textContent = 'Wait… not all victims have moved yet.';
-      killerBanner.classList.add('waiting');
     }
   }
+
+  // ✅ These belong inside applyPlayerState
+  show('player');
+  startPlayerPolling(p.pin);
 }
 
-
-      show('player');
-      startPlayerPolling(p.pin);
-    }
 
     async function fetchJSON(url, options) {
       const res = await fetch(url, options);

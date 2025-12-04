@@ -532,15 +532,28 @@ function handleCompanionLockOnNextRound() {
   const lockedPins = new Set();
 
   Object.entries(currentMap).forEach(([pin, currSet]) => {
-    const lastSet = lastMap[pin];
-    if (!lastSet) return;
-    currSet.forEach(otherPin => {
-      if (lastSet.has(otherPin)) {
-        lockedPins.add(pin);
-        lockedPins.add(otherPin);
-      }
-    });
+
+  // ❗ If player is *already punished this round*, DO NOT check them again.
+  if (
+    gameState.clueLockUntilRound &&
+    gameState.clueLockUntilRound[pin] &&
+    gameState.round <= gameState.clueLockUntilRound[pin]
+  ) {
+    return;  // Skip — prevents infinite punishment chain
+  }
+
+  const lastSet = lastMap[pin];
+  if (!lastSet) return;
+
+  currSet.forEach(otherPin => {
+    if (lastSet.has(otherPin)) {
+      lockedPins.add(pin);
+      lockedPins.add(otherPin);
+    }
   });
+
+});
+
 
   if (!gameState.clueLockUntilRound) {
     gameState.clueLockUntilRound = {};
