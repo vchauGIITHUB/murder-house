@@ -687,6 +687,23 @@
             </select>
             <button id="vote-btn">Record Vote</button>
 
+            <!-- Ghost event voting (dead players only) -->
+            <div id="ghost-event-block" class="hidden" style="margin-top:10px;">
+              <div class="section-title">Ghost Event Vote</div>
+              <small class="muted">
+                As a ghost, you may vote for a curse. The house triggers a ghost-chosen event every few rounds.
+              </small>
+              <label for="ghost-event-select" style="margin-top:6px;">Choose an event</label>
+              <select id="ghost-event-select">
+                <option value="">-- choose an event --</option>
+                <option value="shove">The Shove in the Dark</option>
+                <option value="scream">Screams</option>
+                <option value="reveal">Room Reveal</option>
+                <option value="gaze">Killer’s Gaze</option>
+              </select>
+              <button id="ghost-vote-btn">Cast Ghost Vote</button>
+            </div>
+
             <div id="player-status" class="status"></div>
           </div>
         </div>
@@ -732,8 +749,14 @@
             <tbody></tbody>
           </table>
 
+          <!-- Randomize + Scatter moved under roster -->
+          <div style="margin-top:6px;">
+            <button id="gm-randomize-btn">Randomize Roles</button>
+            <button id="gm-scatter-now-btn" style="margin-left:6px;">Scatter Players Now</button>
+          </div>
+
           <!-- Manual countdown timer under roster -->
-          <div class="section-title">Round Timer</div>
+          <div class="section-title" style="margin-top:10px;">Round Timer</div>
           <small class="muted">Set the countdown in seconds (default 120) then start.</small>
           <div style="display:flex;align-items:center;gap:8px;margin-top:4px;">
             <input id="gm-timer-input" type="number" min="5" step="5" value="120" style="max-width:90px;">
@@ -745,20 +768,38 @@
             <button id="gm-timer-reset-btn" style="margin-left:6px;">Reset</button>
           </div>
 
-          <!-- Room reveal / specials (all apply at start of NEXT round) -->
+          <!-- Killer's Advantage controls -->
+          <div class="section-title" style="margin-top:10px;">Killer’s Advantage</div>
+          <small class="muted">
+            When enabled, every N rounds the Killer may move twice and kill once
+            (MOVE, MOVE, KILL or MOVE, KILL, MOVE).
+          </small>
+          <div style="display:flex;align-items:center;gap:8px;margin-top:4px;">
+            <label for="gm-killers-adv-interval" class="muted" style="flex:0 0 auto;">Every</label>
+            <input id="gm-killers-adv-interval" type="number" min="1" step="1" value="3" style="max-width:70px;">
+            <span class="muted">rounds</span>
+          </div>
+          <button id="gm-killers-adv-toggle-btn" style="margin-top:4px;">Toggle Killer’s Advantage</button>
+
+          <!-- Ghost event frequency -->
+          <div class="section-title" style="margin-top:10px;">Ghost Event Frequency</div>
+          <small class="muted">
+            Dead players vote each round. The house triggers their chosen event every N rounds.
+          </small>
+          <div style="display:flex;align-items:center;gap:8px;margin-top:4px;">
+            <input id="gm-ghost-interval-input" type="number" min="1" step="1" value="5" style="max-width:90px;">
+            <button id="gm-ghost-interval-btn">Set Ghost Interval</button>
+          </div>
+
+          <!-- Round effects (all apply at start of NEXT round) -->
           <div class="section-title" style="margin-top:10px;">Round Effects (Next Round)</div>
           <button id="gm-reveal-dots-btn">Room Reveal</button>
           <button id="gm-shove-btn" style="margin-left:6px;">The Shove in the Dark</button>
           <button id="gm-killer-gaze-btn" style="margin-top:6px;">Killer's Gaze</button>
           <button id="gm-scream-btn" style="margin-left:6px;margin-top:6px;">Screams</button>
-<button id="gm-killer-clues-btn" style="margin-top:6px;">
-  Toggle Killer Room Clues
-</button>
-
-          <!-- Instant scatter button -->
-          <button id="gm-scatter-now-btn" style="margin-top:8px;">Scatter Players Now</button>
-
-          <button id="gm-randomize-btn" style="margin-top:10px;">Randomize Roles</button>
+          <button id="gm-killer-clues-btn" style="margin-top:6px;">
+            Toggle Killer Room Clues
+          </button>
 
           <div id="gm-status" class="status"></div>
         </div>
@@ -805,6 +846,22 @@
 
           <div class="section-title">Kill Attempts (Private for GM)</div>
           <div id="gm-kill-attempts" class="muted"></div>
+
+          <!-- Ghost vote tracking -->
+          <div class="section-title" style="margin-top:10px;">Ghost Event Votes (Dead Players)</div>
+          <table id="gm-ghost-votes-table">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Voted?</th>
+                <th>Choice</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+          <div id="gm-ghost-majority" class="muted" style="margin-top:4px;">
+            Ghost Majority Vote: —
+          </div>
 
           <div id="gm-map-wrapper" style="margin-top:10px;">
             <div class="section-title">Live Map (GM Only)</div>
@@ -1145,7 +1202,6 @@
     function applyPlayerState(payload) {
       const prevPlayer = state.player;
       const prevAlive = prevPlayer ? prevPlayer.alive : null;
-      const prevRound = state.round;
 
       setRoundLabel(payload.round);
 
@@ -1165,6 +1221,13 @@
       if (deadBanner) {
         if (p.alive) deadBanner.classList.add('hidden');
         else deadBanner.classList.remove('hidden');
+      }
+
+      // Ghost event block (only for dead players)
+      const ghostBlock = document.getElementById('ghost-event-block');
+      if (ghostBlock) {
+        if (p.alive) ghostBlock.classList.add('hidden');
+        else ghostBlock.classList.remove('hidden');
       }
 
       // Death popup – only when a Victim flips from alive -> dead
@@ -1377,11 +1440,7 @@
         return;
       }
 
-      const msg = json.clue
-        ? `${json.message} A clue whispers: "${json.clue}"`
-        : (json.message || 'Move recorded.');
-
-      setStatus('player-status', msg, false);
+      setStatus('player-status', json.message || 'Move recorded.', false);
       applyPlayerState(stateJson);
     });
 
@@ -1454,6 +1513,32 @@
       }
 
       setStatus('player-status', json.message || 'Vote recorded.', false);
+    });
+
+    // Ghost vote (dead players)
+    document.getElementById('ghost-vote-btn').addEventListener('click', async () => {
+      if (!state.pin) return;
+
+      const eventKey = document.getElementById('ghost-event-select').value;
+      if (!eventKey) {
+        setStatus('player-status', 'Choose an event to vote for as a ghost.', true);
+        return;
+      }
+
+      setStatus('player-status', 'Your whisper seeps into the house…', false);
+
+      const { json } = await fetchJSON('/api/ghostVote', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pin: state.pin, event: eventKey })
+      });
+
+      if (!json.ok) {
+        setStatus('player-status', json.error || 'Error casting ghost vote.', true);
+        return;
+      }
+
+      setStatus('player-status', json.message || 'Ghost vote recorded.', false);
     });
 
     /* -------- GM helpers -------- */
@@ -1682,13 +1767,60 @@
           const list = document.createElement('ul');
           attempts.forEach(k => {
             const li = document.createElement('li');
-            const resolvedText = k.resolved ? ' (victim already dead)' : ' (pending)';
-            li.textContent = `Killer attempted kill on ${k.victimName} in ${k.room}${resolvedText}`;
+            const resolvedText = k.resolved ? '' : ' (pending)';
+            const victimName = k.victimName || `PIN ${k.victimPin}`;
+            li.textContent = `Killer attempted kill on ${victimName} in ${k.room}${resolvedText}`;
             list.appendChild(li);
           });
           killBox.innerHTML = '';
           killBox.appendChild(list);
         }
+      }
+
+      // Ghost votes table
+      const ghostBody = document.querySelector('#gm-ghost-votes-table tbody');
+      if (ghostBody) {
+        ghostBody.innerHTML = '';
+        const ghosts = json.ghostVotes || [];
+        if (!ghosts.length) {
+          const tr = document.createElement('tr');
+          tr.innerHTML = '<td colspan="3">No dead players yet.</td>';
+          ghostBody.appendChild(tr);
+        } else {
+          ghosts.forEach(g => {
+            const tr = document.createElement('tr');
+            const voted = !!g.event;
+            const label = g.eventLabel || (g.event || '—');
+            tr.innerHTML = `<td>${g.name}</td><td class="${voted ? 'status-good' : 'status-bad'}">${voted ? 'Voted' : 'No vote'}</td><td>${voted ? label : '—'}</td>`;
+            ghostBody.appendChild(tr);
+          });
+        }
+      }
+
+      // Ghost majority display
+      const ghostMajor = document.getElementById('gm-ghost-majority');
+      if (ghostMajor) {
+        const gmj = json.ghostMajority;
+        if (!gmj) {
+          ghostMajor.textContent = 'Ghost Majority Vote: —';
+        } else {
+          ghostMajor.textContent =
+            `Ghost Majority Vote: ${gmj.label} (${gmj.count} vote${gmj.count === 1 ? '' : 's'})`;
+        }
+      }
+
+            // 🔹 Sync Killer's Advantage UI from server
+      const killerAdv = json.killersAdvantage || {};
+      const killerInput = document.getElementById('gm-killers-adv-interval');
+      if (killerInput && Number.isFinite(killerAdv.interval)) {
+        killerInput.value = killerAdv.interval;
+      }
+
+
+
+      const ghostIntervalInput = document.getElementById('gm-ghost-interval-input');
+      if (ghostIntervalInput && json.ghostEventInterval) {
+        ghostIntervalInput.value = json.ghostEventInterval;
       }
     }
 
@@ -1837,6 +1969,11 @@
       const killBox = document.getElementById('gm-kill-attempts');
       if (killBox) killBox.textContent = 'No kill attempts this round yet.';
 
+      const ghostBody = document.querySelector('#gm-ghost-votes-table tbody');
+      if (ghostBody) ghostBody.innerHTML = '<tr><td colspan="3">No dead players yet.</td></tr>';
+      const ghostMajor = document.getElementById('gm-ghost-majority');
+      if (ghostMajor) ghostMajor.textContent = 'Ghost Majority Vote: —';
+
       setStatus(
         'gm-status',
         'Game reset. Tell everyone to tap "Leave Game / Join New Run" and re-enter their names.',
@@ -1845,25 +1982,25 @@
     });
 
     // Toggle whether Killer can see clues in rooms
-document.getElementById('gm-killer-clues-btn').addEventListener('click', async () => {
-  const { json } = await fetchJSON('/api/gm/toggleKillerClues', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' }
-  });
+    document.getElementById('gm-killer-clues-btn').addEventListener('click', async () => {
+      const { json } = await fetchJSON('/api/gm/toggleKillerClues', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
 
-  if (!json.ok) {
-    setStatus('gm-status', json.error || 'Error toggling killer clues.', true);
-    return;
-  }
+      if (!json.ok) {
+        setStatus('gm-status', json.error || 'Error toggling killer clues.', true);
+        return;
+      }
 
-  setStatus(
-    'gm-status',
-    json.killerSeesClues
-      ? 'Killers can now see clue fragments in their current room.'
-      : 'Killers can no longer see clue fragments in their current room.',
-    false
-  );
-});
+      setStatus(
+        'gm-status',
+        json.killerSeesClues
+          ? 'Killers can now see clue fragments in their current room.'
+          : 'Killers can no longer see clue fragments in their current room.',
+        false
+      );
+    });
 
     // Room Reveal (next round)
     document.getElementById('gm-reveal-dots-btn').addEventListener('click', async () => {
@@ -1949,7 +2086,28 @@ document.getElementById('gm-killer-clues-btn').addEventListener('click', async (
       );
     });
 
-    // 🔴 Scatter Clues button (this was missing – now wired up)
+    // Scatter players now
+    document.getElementById('gm-scatter-now-btn').addEventListener('click', async () => {
+      const { json } = await fetchJSON('/api/gm/scatterPlayers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({})
+      });
+
+      if (!json.ok) {
+        setStatus('gm-status', json.error || 'Error scattering players.', true);
+        return;
+      }
+
+      setStatus(
+        'gm-status',
+        `Scattered ${json.scattered} player(s) evenly and randomly across rooms.`,
+        false
+      );
+      await refreshGmSummaryAndTables();
+    });
+
+    // 🔴 Scatter Clues button
     document.getElementById('gm-generate-clues-btn').addEventListener('click', async () => {
       const input = document.getElementById('gm-secret-sentence');
       const sentence = input.value.trim();
@@ -1986,27 +2144,6 @@ document.getElementById('gm-killer-clues-btn').addEventListener('click', async (
       await refreshGmSummaryAndTables();
     });
 
-    // Instant scatter button
-    document.getElementById('gm-scatter-now-btn').addEventListener('click', async () => {
-      const { json } = await fetchJSON('/api/gm/scatterPlayers', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({})
-      });
-
-      if (!json.ok) {
-        setStatus('gm-status', json.error || 'Error scattering players.', true);
-        return;
-      }
-
-      setStatus(
-        'gm-status',
-        `Scattered ${json.scattered} player(s) evenly and randomly across rooms.`,
-        false
-      );
-      await refreshGmSummaryAndTables();
-    });
-
     // GM timer buttons
     document.getElementById('gm-timer-start-btn').addEventListener('click', () => {
       startGmTimer();
@@ -2016,6 +2153,60 @@ document.getElementById('gm-killer-clues-btn').addEventListener('click', async (
     });
     document.getElementById('gm-timer-reset-btn').addEventListener('click', () => {
       resetGmTimer();
+    });
+
+    // Killer's Advantage config
+    document.getElementById('gm-killers-adv-toggle-btn').addEventListener('click', async () => {
+      const input = document.getElementById('gm-killers-adv-interval');
+      let interval = parseInt(input.value, 10);
+      if (isNaN(interval) || interval < 1) {
+        interval = 3;
+      }
+
+      const { json } = await fetchJSON('/api/gm/setKillersAdvantage', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ interval, toggle: true })
+      });
+
+      if (!json.ok) {
+        setStatus('gm-status', json.error || 'Error updating Killer’s Advantage.', true);
+        return;
+      }
+
+      input.value = json.interval;
+      setStatus(
+        'gm-status',
+        `Killer’s Advantage ${json.enabled ? 'ENABLED' : 'DISABLED'} (every ${json.interval} rounds).`,
+        false
+      );
+    });
+
+    // Ghost event interval
+    document.getElementById('gm-ghost-interval-btn').addEventListener('click', async () => {
+      const input = document.getElementById('gm-ghost-interval-input');
+      let interval = parseInt(input.value, 10);
+      if (isNaN(interval) || interval < 1) {
+        interval = 5;
+      }
+
+      const { json } = await fetchJSON('/api/gm/setGhostEventInterval', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ interval })
+      });
+
+      if (!json.ok) {
+        setStatus('gm-status', json.error || 'Error setting ghost event interval.', true);
+        return;
+      }
+
+      input.value = json.interval;
+      setStatus(
+        'gm-status',
+        `Ghost event interval set to every ${json.interval} rounds.`,
+        false
+      );
     });
 
     // Auto-rejoin if stored PIN
