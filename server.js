@@ -211,6 +211,50 @@ function isKillerAdvantageRound() {
   if (!gameState.killerAdvantageEnabled || freq <= 0) return false;
   return gameState.round % freq === 0;
 }
+/* ---------- VOTE HELPERS ---------- */
+
+// Auto-execute majority vote at end of round.
+function executeMajorityVote() {
+  const votesThisRound = gameState.votes.filter(
+    v => v.round === gameState.round
+  );
+  if (!votesThisRound.length) return null;
+
+  const tally = {};
+  votesThisRound.forEach(v => {
+    const key = String(v.targetPin);
+    tally[key] = (tally[key] || 0) + 1;
+  });
+
+  let max = 0;
+  Object.values(tally).forEach(count => {
+    if (count > max) max = count;
+  });
+  if (max === 0) return null;
+
+  const topPins = Object.entries(tally)
+    .filter(([, count]) => count === max)
+    .map(([pin]) => pin);
+
+  if (topPins.length !== 1) return null; // tie → no death
+
+  const executedPin = topPins[0];
+  const executedPlayer = findPlayerByPin(executedPin);
+  if (!executedPlayer || !executedPlayer.alive) return null;
+
+  executedPlayer.alive = false;
+  returnCluesToRooms(executedPlayer);
+
+  gameState.kills.push({
+    round: gameState.round,
+    room: executedPlayer.room,
+    victimPin: executedPlayer.pin,
+    resolved: true,
+    reason: 'voteExecution'
+  });
+
+  return executedPlayer;
+}
 
 /* ---------- CLUE HELPERS ---------- */
 
@@ -365,6 +409,7 @@ function maybeGiveClueOnMove(player, newRoom) {
 
   return chosen;
 }
+
 // Distribute clues at the END of the round, based on who is alone
 // in which room AFTER everyone has moved.
 function distributeCluesForRound() {
@@ -637,6 +682,8 @@ app.post('/api/gm/randomizeRoles', (req, res) => {
 // Next round – applies companion lock, next-round effects, shove, and ghost events.
 app.post('/api/gm/nextRound', (req, res) => {
   const prevRound = gameState.round;
+  // 0) Majority vote auto-kill
+  const executed = executeMajorityVote();
 
   // 1) First, award clues based on who is alone in which room
   distributeCluesForRound();

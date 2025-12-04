@@ -294,6 +294,7 @@
       background-size: contain;
       background-repeat: no-repeat;
       background-color: #050506;
+      overflow: visible;
     }
     /* Keep room description no wider than the mini map */
     #room-description {
@@ -319,7 +320,30 @@
       filter: blur(1.2px);
       mix-blend-mode: screen;
       animation: candle-flicker 1.7s infinite alternate;
+      z-index: 5;
     }
+/* Mobile override – stronger glow */
+@media (max-width: 768px) {
+  .player-map .candle-glow {
+    top: -4%;
+    right: 2%;
+    width: 190px;
+    height: 190px;
+
+    /* Mobile engines often break blur + blend mode */
+    filter: none;
+    mix-blend-mode: normal;
+
+    background: radial-gradient(circle,
+      rgba(255, 245, 210, 1.0) 0%,
+      rgba(255, 220, 150, 0.9) 30%,
+      rgba(255, 180, 90, 0.55) 65%,
+      rgba(0, 0, 0, 0) 100%
+    );
+
+    opacity: 1;
+  }
+}
 
     @keyframes candle-flicker {
       0% {
@@ -677,7 +701,7 @@
             <ul id="player-collected-clues-list"></ul>
           </div>
 
-          <div class="card">
+          <div id="actions-card" class="card">
             <h2>Actions</h2>
             <small>Moves are secret. Kills are quieter.</small>
 
@@ -1228,6 +1252,17 @@
       setRoundLabel(payload.round);
 
       const p = payload.player;
+      // Hide move & vote if the player is dead (victims or killers)
+const actionsCard = document.getElementById('actions-card');
+
+if (!p.alive) {
+  // Player is dead → hide all actions except ghost event block
+  if (actionsCard) actionsCard.classList.add('hidden');
+} else {
+  // Player is alive → show normal action panel
+  if (actionsCard) actionsCard.classList.remove('hidden');
+}
+
       state.player = p;
       state.pin = p.pin;
       state.revealDots = !!payload.revealDots;
