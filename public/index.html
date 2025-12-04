@@ -197,6 +197,26 @@
     .hidden {
       display: none;
     }
+        #killer-move-banner {
+      margin-top: 6px;
+      padding: 6px 10px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    /* Waiting state – bright yellow */
+    #killer-move-banner.waiting {
+      background: #ffd60a;
+      color: #000;
+    }
+
+    /* Ready state – green */
+    #killer-move-banner.ready {
+      background: #2ecc71;
+      color: #fff;
+    }
+
     table {
       width: 100%;
       border-collapse: collapse;
@@ -667,6 +687,8 @@
               <option value="">-- choose room --</option>
             </select>
             <button id="move-btn">Record Move</button>
+            <div id="killer-move-banner" class="muted hidden"></div>
+
 
             <div id="kill-section">
               <div class="section-title">Kill (Killer only)</div>
@@ -1295,6 +1317,27 @@
       populateAllowedRooms(payload.allowedRooms);
       populateVoteDropdown(payload.roster, p.pin);
       populateKillDropdown(payload.roomInfo, p.pin, payload.canKill);
+      // Killer move banner – based ONLY on victims moving
+const killerBanner = document.getElementById('killer-move-banner');
+if (killerBanner) {
+  // reset state
+  killerBanner.classList.remove('waiting', 'ready');
+  killerBanner.classList.add('hidden');
+
+  if (p.role === 'Killer') {
+    killerBanner.classList.remove('hidden');
+
+    // 🔴 IMPORTANT: use allVictimsMoved, not allPlayersMoved
+    if (payload.allVictimsMoved) {
+      killerBanner.textContent = 'All victims have moved.';
+      killerBanner.classList.add('ready');
+    } else {
+      killerBanner.textContent = 'Wait… not all victims have moved yet.';
+      killerBanner.classList.add('waiting');
+    }
+  }
+}
+
 
       show('player');
       startPlayerPolling(p.pin);

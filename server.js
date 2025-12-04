@@ -1116,13 +1116,15 @@ app.post('/api/state', (req, res) => {
     p => p.room === room && !p.alive
   );
 
-  const aliveVictims = gameState.players.filter(p => p.alive && p.role === 'Victim');
+  // Victim move tracking (for banners + kill logic)
+  const aliveVictims = gameState.players.filter(
+    p => p.alive && p.role === 'Victim'
+  );
   const movedPins = new Set(
     gameState.moves
       .filter(m => m.round === gameState.round)
       .map(m => String(m.pin))
   );
-
   const allVictimsMoved =
     aliveVictims.length > 0 &&
     aliveVictims.every(p => movedPins.has(String(p.pin)));
@@ -1187,6 +1189,8 @@ app.post('/api/state', (req, res) => {
     shove: !!(gameState.shoveTriggeredRound === gameState.round)
   };
 
+  const allPlayersMoved = haveAllLivingPlayersMovedThisRound();
+
   res.json({
     ok: true,
     round: gameState.round,
@@ -1213,9 +1217,13 @@ app.post('/api/state', (req, res) => {
     roomDots,
     roomClues: roomCluesForViewer,
     effects,
-    killerAdvantageRound: killerAdvRound
+    killerAdvantageRound: killerAdvRound,
+    allPlayersMoved,
+    allVictimsMoved
   });
 });
+
+
 
 // Move
 app.post('/api/move', (req, res) => {
@@ -1460,6 +1468,7 @@ app.post('/api/kill', (req, res) => {
     room: killer.room
   });
 });
+
 
 /* -------------- JSON 404 fallback -------------- */
 
