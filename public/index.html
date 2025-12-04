@@ -328,12 +328,12 @@
     position: absolute;
 
     /* adjust glow location */
-    top: -3.75%;        /* move slightly UP */
-    right: 7.5%;        /* move LEFT to align with candle */
+    top: -4.2%;        /* move slightly UP */
+    right: 5.5%;        /* move LEFT to align with candle */
 
     /* adjust glow size */
-    width: 100px;
-    height: 100px;
+    width: 120px;
+    height: 120px;
 
     border-radius: 50%;
     pointer-events: none;
@@ -342,16 +342,16 @@
     background: radial-gradient(
       circle,
       rgba(255, 240, 200, 0.55) 0%,
-      rgba(255, 210, 130, 0.30) 35%,
-      rgba(255, 160, 80, 0.15) 60%,
-      rgba(0, 0, 0, 0) 85%
+      rgba(255, 210, 130, 0.30) 30%,
+      rgba(255, 160, 80, 0.15) 55%,
+      rgba(0, 0, 0, 0) 82%
     );
 
     opacity: 0.95;
     filter: blur(1px);
     mix-blend-mode: screen;
 
-    animation: candle-flicker 1.7s infinite alternate;
+    animation: candle-flicker 1.5s infinite alternate;
     z-index: 5;
   }
 }
