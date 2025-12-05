@@ -567,6 +567,26 @@
       cursor: pointer;
     }
 
+    /* System banner used for global messages (like Killer Advantage) */
+.system-banner {
+  margin-top: 8px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  background: linear-gradient(180deg, #461010, #1a0707);
+  color: #ffb3b3;
+  border: 1px solid #7a1a1a;
+  box-shadow: 0 0 12px rgba(255, 0, 0, 0.35);
+}
+
+/* Specific tweaks for the Killer Advantage banner */
+#killer-adv-banner {
+  text-transform: uppercase;
+}
+
     @media (max-width: 600px) {
       .card {
         padding: 12px 12px 14px;
@@ -599,6 +619,10 @@
           <div id="round-pill" class="round-pill">ROUND —</div>
         </div>
       </div>
+
+      <div id="killer-adv-banner" class="system-banner hidden">
+  Killer’s Advantage is active: the Killer may move twice and kill once this round.
+</div>
 
       <!-- Identity mini card beside title (hidden unless in player view) -->
       <div id="header-identity-card" class="card header-identity hidden">
@@ -719,14 +743,19 @@
 
   <!-- MOVE SECTION -->
   <div id="move-section">
-    <div class="section-title">Move</div>
-    <label for="move-room-select">Choose adjacent room</label>
-    <select id="move-room-select">
-      <option value="">-- choose room --</option>
-    </select>
-    <button id="move-btn">Record Move</button>
-    <div id="killer-move-banner" class="muted hidden"></div>
-  </div>
+  <div class="section-title">Move</div>
+  <label for="move-room-select">Choose adjacent room</label>
+  <select id="move-room-select">
+    <option value="">-- choose room --</option>
+  </select>
+  <button id="move-btn">Record Move</button>
+
+  <!-- NEW: Killer-only stay button, JS shows/hides -->
+  <button id="stay-btn" class="hidden">Stay In This Room</button>
+
+  <div id="killer-move-banner" class="muted hidden"></div>
+</div>
+
 
   <!-- KILL SECTION (killer only, JS already hides/shows this) -->
   <div id="kill-section">
@@ -759,12 +788,9 @@
     </small>
     <label for="ghost-event-select" style="margin-top:6px;">Choose an event</label>
     <select id="ghost-event-select">
-      <option value="">-- choose an event --</option>
-      <option value="shove">The Shove in the Dark</option>
-      <option value="scream">Screams</option>
-      <option value="reveal">Room Reveal</option>
-      <option value="gaze">Killer’s Gaze</option>
-    </select>
+  <option value="">-- choose an event --</option>
+</select>
+
     <button id="ghost-vote-btn">Cast Ghost Vote</button>
   </div>
 
@@ -865,6 +891,13 @@
           <button id="gm-killer-clues-btn" style="margin-top:6px;">
             Toggle Killer Room Clues
           </button>
+
+          <button id="gm-dead-intervene-btn" style="margin-top:6px;">
+  The Dead Intervene
+</button>
+<button id="gm-sanctuary-btn" style="margin-left:6px;margin-top:6px;">
+  Sanctuary
+</button>
 
           <div id="gm-status" class="status"></div>
         </div>
@@ -990,12 +1023,15 @@
 
     // per-effect popup tracking (per round)
     const popupRounds = {
-      death: null,
-      roomReveal: null,
-      shove: null,
-      killerGaze: null,
-      scream: null
-    };
+  death: null,
+  roomReveal: null,
+  shove: null,
+  killerGaze: null,
+  scream: null,
+  deadIntervene: null,
+  sanctuary: null
+};
+
 
     // GM timer
     let gmTimerInterval = null;
@@ -1244,6 +1280,33 @@
       }
     }
 
+        function populateGhostEventOptions(lastEvent) {
+      const sel = document.getElementById('ghost-event-select');
+      if (!sel) return;
+
+      const allEvents = [
+        { value: 'shove',      label: 'The Shove in the Dark' },
+        { value: 'scream',     label: 'Screams' },
+        { value: 'reveal',     label: 'Room Reveal' },
+        { value: 'gaze',       label: 'Killer’s Gaze' },
+        { value: 'intervene',  label: 'The Dead Intervene' },
+        { value: 'sanctuary',  label: 'Sanctuary' }
+      ];
+
+      // Reset base option
+      sel.innerHTML = '<option value="">-- choose an event --</option>';
+
+      allEvents.forEach(ev => {
+        // 🚫 Hide the event that fired last interval
+        if (ev.value === lastEvent) return;
+
+        const opt = document.createElement('option');
+        opt.value = ev.value;
+        opt.textContent = ev.label;
+        sel.appendChild(opt);
+      });
+    }
+
     function startPlayerPolling(pin) {
       if (playerPollTimer) clearInterval(playerPollTimer);
       playerPollTimer = setInterval(async () => {
@@ -1297,6 +1360,16 @@
   document.getElementById('player-role-label').textContent = p.role;
   document.getElementById('player-pin-label').textContent = p.pin;
 
+    // Show "Stay" button only for alive Killer
+  const stayBtn = document.getElementById('stay-btn');
+  if (stayBtn) {
+    if (p.alive && p.role === 'Killer') {
+      stayBtn.classList.remove('hidden');
+    } else {
+      stayBtn.classList.add('hidden');
+    }
+  }
+
   // DEAD banner visibility – only on this player's own screen
   const deadBanner = document.getElementById('dead-banner');
   if (deadBanner) {
@@ -1304,12 +1377,18 @@
     else deadBanner.classList.remove('hidden');
   }
 
-  // Ghost event block (only for dead players)
+    // Ghost event block (only for dead players)
   const ghostBlock = document.getElementById('ghost-event-block');
   if (ghostBlock) {
-    if (p.alive) ghostBlock.classList.add('hidden');
-    else ghostBlock.classList.remove('hidden');
+    if (p.alive) {
+      ghostBlock.classList.add('hidden');
+    } else {
+      ghostBlock.classList.remove('hidden');
+      // ⬇ Build the dropdown, skipping the last triggered ghost event
+      populateGhostEventOptions(payload.lastGhostEvent || null);
+    }
   }
+
 
   // Death popup – only when a Victim flips from alive -> dead
   if (
@@ -1366,6 +1445,28 @@
     );
   }
 
+    // The Dead Intervene popup
+  if (effects.deadIntervene && popupRounds.deadIntervene !== payload.round) {
+    popupRounds.deadIntervene = payload.round;
+    showGlobalPopup(
+      'The Dead Intervene',
+      'The dead hold the killer’s hand. No one can be killed this round.'
+    );
+  }
+
+  // Sanctuary popup (show which rooms are safe)
+  if (effects.sanctuary && popupRounds.sanctuary !== payload.round) {
+    popupRounds.sanctuary = payload.round;
+    const sanctRooms = Array.isArray(payload.sanctuaryRooms)
+      ? payload.sanctuaryRooms
+      : [];
+    const list = sanctRooms.length ? sanctRooms.join(', ') : 'a few unknown rooms';
+    showGlobalPopup(
+      'Sanctuary',
+      `For this round, victims in these rooms cannot be killed: ${list}.`
+    );
+  }
+
   populateRoomState(
     payload.roomInfo,
     payload.revealDots,
@@ -1393,6 +1494,16 @@
         killerBanner.textContent = 'Wait… not all victims have moved yet.';
         killerBanner.classList.add('waiting');
       }
+    }
+  }
+
+    // Killer Advantage global banner (ALL players see it)
+  const advBanner = document.getElementById('killer-adv-banner');
+  if (advBanner) {
+    if (payload.killerAdvantageRound) {
+      advBanner.classList.remove('hidden');
+    } else {
+      advBanner.classList.add('hidden');
     }
   }
 
@@ -1543,6 +1654,43 @@
       }
 
       setStatus('player-status', json.message || 'Move recorded.', false);
+      applyPlayerState(stateJson);
+    });
+
+        document.getElementById('stay-btn').addEventListener('click', async () => {
+      if (!state.pin || !state.roomInfo) return;
+
+      setStatus('player-status', 'You hold your breath and stay put…', false);
+
+      const currentRoom = state.roomInfo.room;
+
+      const { json } = await fetchJSON('/api/move', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          pin: state.pin,
+          room: currentRoom,
+          stay: true   // flag this as a Stay action
+        })
+      });
+
+      if (!json.ok) {
+        setStatus('player-status', json.error || 'Error staying.', true);
+        return;
+      }
+
+      const { json: stateJson } = await fetchJSON('/api/state', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pin: state.pin })
+      });
+
+      if (!stateJson.ok) {
+        setStatus('player-status', stateJson.error || 'Error loading state.', true);
+        return;
+      }
+
+      setStatus('player-status', json.message || 'You remain in the shadows.', false);
       applyPlayerState(stateJson);
     });
 
@@ -1917,6 +2065,16 @@
       if (killerInput && Number.isFinite(killerAdv.interval)) {
         killerInput.value = killerAdv.interval;
       }
+      // 🔴 Show/hide Killer Advantage banner for GM too
+const advBanner = document.getElementById('killer-adv-banner');
+if (advBanner) {
+  if (json.killerAdvantageRound) {
+    advBanner.classList.remove('hidden');
+  } else {
+    advBanner.classList.add('hidden');
+  }
+}
+
 
 
 
@@ -2124,6 +2282,48 @@
         false
       );
     });
+
+    // The Dead Intervene (next round)
+document.getElementById('gm-dead-intervene-btn').addEventListener('click', async () => {
+  const { json } = await fetchJSON('/api/gm/toggleDeadIntervene', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' }
+  });
+
+  if (!json.ok) {
+    setStatus('gm-status', json.error || 'Error toggling The Dead Intervene.', true);
+    return;
+  }
+
+  setStatus(
+    'gm-status',
+    json.deadInterveneNextRound
+      ? '"The Dead Intervene" armed for the next round.'
+      : '"The Dead Intervene" cleared for the next round.',
+    false
+  );
+});
+
+// Sanctuary (next round)
+document.getElementById('gm-sanctuary-btn').addEventListener('click', async () => {
+  const { json } = await fetchJSON('/api/gm/toggleSanctuary', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' }
+  });
+
+  if (!json.ok) {
+    setStatus('gm-status', json.error || 'Error toggling Sanctuary.', true);
+    return;
+  }
+
+  setStatus(
+    'gm-status',
+    json.sanctuaryNextRound
+      ? 'Sanctuary armed: 2 random rooms will be safe from kills next round.'
+      : 'Sanctuary cleared for the next round.',
+    false
+  );
+});
 
     // Shove in the Dark (next round)
     document.getElementById('gm-shove-btn').addEventListener('click', async () => {

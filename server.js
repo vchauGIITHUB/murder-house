@@ -117,7 +117,20 @@ function createFreshGame() {
     // Ghost events
     ghostEventInterval: 5,          // every 5 rounds by default
     // ghostVotes: { round, pin, event }
-    ghostVotes: []
+    ghostVotes: [],
+
+    // NEW: remember the last ghost-triggered event
+    lastGhostEvent: null,
+    
+         // The Dead Intervene – global kill lock
+    deadInterveneActive: false,       // active THIS round
+    deadInterveneNextRound: false,    // armed for NEXT round
+
+    // Sanctuary – some rooms are safe from kills this round
+    sanctuaryActive: false,
+    sanctuaryNextRound: false,
+    sanctuaryRooms: [],               // rooms safe THIS round
+
   };
 }
 
@@ -589,10 +602,16 @@ function getGhostEventLabel(key) {
       return 'Room Reveal';
     case 'gaze':
       return 'Killer’s Gaze';
+    case 'intervene':
+      return 'The Dead Intervene';
+    case 'sanctuary':
+      return 'Sanctuary';
     default:
       return key || '—';
   }
 }
+
+
 
 /* ------------------ GM ROUTES ------------------ */
 
@@ -698,9 +717,6 @@ app.post('/api/gm/nextRound', (req, res) => {
   // 0) Majority vote auto-kill
   const executed = executeMajorityVote();
 
-  // 1) First, award clues based on who is alone in which room
-  distributeCluesForRound();
-
   // 2) Then handle the companion "same victim 2 rounds" lock for NEXT round
   handleCompanionLockOnNextRound();
 
@@ -720,6 +736,30 @@ app.post('/api/gm/nextRound', (req, res) => {
   gameState.screamActive = !!gameState.screamNextRound;
   gameState.screamNextRound = false;
 
+      // The Dead Intervene – apply for THIS round
+  gameState.deadInterveneActive = !!gameState.deadInterveneNextRound;
+  gameState.deadInterveneNextRound = false;
+
+  // Sanctuary – pick random rooms for THIS round
+  if (gameState.sanctuaryNextRound) {
+    gameState.sanctuaryActive = true;
+
+    const roomsCopy = ROOMS.slice();
+    // shuffle
+    for (let i = roomsCopy.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [roomsCopy[i], roomsCopy[j]] = [roomsCopy[j], roomsCopy[i]];
+    }
+    // default: 2 rooms
+    gameState.sanctuaryRooms = roomsCopy.slice(0, Math.min(2, roomsCopy.length));
+  } else {
+    gameState.sanctuaryActive = false;
+    gameState.sanctuaryRooms = [];
+  }
+  gameState.sanctuaryNextRound = false;
+
+
+
   // Shove in the Dark: scatter players at start of THIS new round
   if (gameState.shoveNextRound) {
     scatterPlayersNoSameRoom(false);
@@ -729,17 +769,20 @@ app.post('/api/gm/nextRound', (req, res) => {
   }
   gameState.shoveNextRound = false;
 
-  // 🔴 Ghost event auto-trigger (every N rounds)
+    // 🔴 Ghost event auto-trigger (every N rounds)
   const ghostInterval = gameState.ghostEventInterval || 0;
   if (ghostInterval > 0 && gameState.round % ghostInterval === 0) {
-    const allowed = new Set(['shove', 'scream', 'reveal', 'gaze']);
+    const allowed = new Set(['shove', 'scream', 'reveal', 'gaze', 'intervene', 'sanctuary']);
     const votesPrevRound = (gameState.ghostVotes || []).filter(
       v => v.round === prevRound && allowed.has(v.event)
     );
 
     if (votesPrevRound.length) {
       const tally = {};
+
       votesPrevRound.forEach(v => {
+        // ❌ Ignore votes for the last event – it is not an option this interval
+        if (v.event === gameState.lastGhostEvent) return;
         tally[v.event] = (tally[v.event] || 0) + 1;
       });
 
@@ -770,9 +813,25 @@ app.post('/api/gm/nextRound', (req, res) => {
             scatterPlayersNoSameRoom(false);
             gameState.shoveTriggeredRound = gameState.round;
             break;
+          case 'intervene':
+            gameState.deadInterveneActive = true;
+            break;
+          case 'sanctuary': {
+            gameState.sanctuaryActive = true;
+            const roomsCopy = ROOMS.slice();
+            for (let i = roomsCopy.length - 1; i > 0; i--) {
+              const j = Math.floor(Math.random() * (i + 1));
+              [roomsCopy[i], roomsCopy[j]] = [roomsCopy[j], roomsCopy[i]];
+            }
+            gameState.sanctuaryRooms = roomsCopy.slice(0, Math.min(2, roomsCopy.length));
+            break;
+          }
           default:
             break;
         }
+
+        // Remember which event fired so we can block it next interval
+        gameState.lastGhostEvent = bestKey;
       }
     }
   }
@@ -803,6 +862,25 @@ app.post('/api/gm/toggleScream', (req, res) => {
   gameState.screamNextRound = !gameState.screamNextRound;
   res.json({ ok: true, screamNextRound: gameState.screamNextRound });
 });
+
+// The Dead Intervene – arm for NEXT round
+app.post('/api/gm/toggleDeadIntervene', (req, res) => {
+  gameState.deadInterveneNextRound = !gameState.deadInterveneNextRound;
+  res.json({
+    ok: true,
+    deadInterveneNextRound: gameState.deadInterveneNextRound
+  });
+});
+
+// Sanctuary – arm for NEXT round (2 random rooms safe from kills)
+app.post('/api/gm/toggleSanctuary', (req, res) => {
+  gameState.sanctuaryNextRound = !gameState.sanctuaryNextRound;
+  res.json({
+    ok: true,
+    sanctuaryNextRound: gameState.sanctuaryNextRound
+  });
+});
+
 
 // The Shove in the Dark – arm scatter for NEXT round
 app.post('/api/gm/toggleShove', (req, res) => {
@@ -923,6 +1001,8 @@ app.get('/api/gm/summary', (req, res) => {
       .map(m => String(m.pin))
   );
 
+    const killerAdvantageRound = isKillerAdvantageRound();
+
   const votedPins = new Set(
     gameState.votes
       .filter(v => v.round === gameState.round)
@@ -997,7 +1077,7 @@ app.get('/api/gm/summary', (req, res) => {
   // Majority event (this round’s ghost votes)
   let ghostMajority = null;
   if (ghostVotesThisRound.length) {
-    const allowed = new Set(['shove', 'scream', 'reveal', 'gaze']);
+      const allowed = new Set(['shove', 'scream', 'reveal', 'gaze', 'intervene', 'sanctuary']);
     const tallyEv = {};
     ghostVotesThisRound.forEach(v => {
       if (!allowed.has(v.event)) return;
@@ -1050,7 +1130,8 @@ app.get('/api/gm/summary', (req, res) => {
     killersAdvantage: {
       enabled: gameState.killerAdvantageEnabled,
       interval: gameState.killerAdvantageFrequency
-    }
+    },
+    killerAdvantageRound
   });
 });
 
@@ -1177,7 +1258,7 @@ app.post('/api/state', (req, res) => {
   );
 
   // Victim move tracking (for banners + kill logic)
-  const aliveVictims = gameState.players.filter(
+    const aliveVictims = gameState.players.filter(
     p => p.alive && p.role === 'Victim'
   );
   const movedPins = new Set(
@@ -1189,8 +1270,13 @@ app.post('/api/state', (req, res) => {
     aliveVictims.length > 0 &&
     aliveVictims.every(p => movedPins.has(String(p.pin)));
 
-  const killerMovesThisRound = countMovesThisRound(player.pin);
+  // NEW: look at the killer's actual moves (distinguish real vs stay)
+  const killerMovesThisRoundArr = gameState.moves.filter(
+    m => m.round === gameState.round && String(m.pin) === String(player.pin)
+  );
   const killerAdvRound = isKillerAdvantageRound();
+  const hasRealMoveThisRound = killerMovesThisRoundArr.some(m => m.from !== m.to);
+
 
   const roster = gameState.players.map(p => ({
     id: p.id,
@@ -1205,15 +1291,15 @@ app.post('/api/state', (req, res) => {
   // - killer has moved at least once this round
   // - there is exactly one other living player in the room
   // - no kill has been used this round yet
-  let canKill = false;
+    let canKill = false;
   let killTarget = null;
 
   if (
     player.role === 'Killer' &&
     player.alive &&
     allVictimsMoved &&
-    killerMovesThisRound >= 1 &&
-    !hasAnyKillThisRound()
+    !hasAnyKillThisRound() &&
+    (killerAdvRound || hasRealMoveThisRound)
   ) {
     const others = livingHere.filter(p => p.pin !== player.pin);
     if (others.length === 1) {
@@ -1224,6 +1310,7 @@ app.post('/api/state', (req, res) => {
       };
     }
   }
+
 
   // Clues visible in this room
   let roomCluesForViewer = [];
@@ -1242,12 +1329,15 @@ app.post('/api/state', (req, res) => {
     }
   }
 
-  const effects = {
+    const effects = {
     roomReveal: !!gameState.revealDots,
     killerGaze: !!gameState.killerVision,
     scream: !!gameState.screamActive,
-    shove: !!(gameState.shoveTriggeredRound === gameState.round)
+    shove: !!(gameState.shoveTriggeredRound === gameState.round),
+    deadIntervene: !!gameState.deadInterveneActive,
+    sanctuary: !!gameState.sanctuaryActive
   };
+
 
   const allPlayersMoved = haveAllLivingPlayersMovedThisRound();
 
@@ -1279,7 +1369,9 @@ app.post('/api/state', (req, res) => {
     effects,
     killerAdvantageRound: killerAdvRound,
     allPlayersMoved,
-    allVictimsMoved
+    allVictimsMoved,
+    sanctuaryRooms: gameState.sanctuaryActive ? (gameState.sanctuaryRooms || []) : [],
+    lastGhostEvent: gameState.lastGhostEvent || null
   });
 });
 
@@ -1287,7 +1379,7 @@ app.post('/api/state', (req, res) => {
 
 // Move
 app.post('/api/move', (req, res) => {
-  const { pin, room } = req.body || {};
+  const { pin, room, stay } = req.body || {};
   const player = findPlayerByPin(pin);
   if (!player) {
     return res.status(400).json({ ok: false, error: 'Player not found.' });
@@ -1297,29 +1389,55 @@ app.post('/api/move', (req, res) => {
     return res.status(400).json({ ok: false, error: 'Dead players cannot move.' });
   }
 
-  const dest = String(room || '').trim();
-  if (!ROOMS.includes(dest)) {
-    return res.status(400).json({ ok: false, error: 'Invalid room.' });
-  }
-
   const currentRoom = player.room || START_ROOM;
-  const allowedRooms = getAllowedRoomsFrom(currentRoom);
-  if (!allowedRooms.includes(dest)) {
-    return res
-      .status(400)
-      .json({ ok: false, error: 'You cannot move there from this room.' });
+  const isStayAction = !!stay && player.role === 'Killer';
+
+  let dest = String(room || '').trim();
+
+  // 🔴 STAY LOGIC with anti-camping rule
+  if (isStayAction) {
+    const lastRound = gameState.round - 1;
+
+    // Did the Killer kill in THIS room last round?
+    const killedHereLastRound = gameState.kills.some(k =>
+      k.round === lastRound &&
+      k.room === currentRoom &&
+      k.reason !== 'voteExecution' // ignore vote executions
+    );
+
+    if (killedHereLastRound) {
+      return res.status(400).json({
+        ok: false,
+        error: 'The floor is still warm from your last kill. You must leave this room first.'
+      });
+    }
+
+    // Stay action = “move” to the same room
+    dest = currentRoom;
   }
 
-  if (dest === currentRoom) {
-    return res
-      .status(400)
-      .json({ ok: false, error: 'You must move to a different room.' });
+  if (!isStayAction) {
+    if (!ROOMS.includes(dest)) {
+      return res.status(400).json({ ok: false, error: 'Invalid room.' });
+    }
+
+    const allowedRooms = getAllowedRoomsFrom(currentRoom);
+    if (!allowedRooms.includes(dest)) {
+      return res
+        .status(400)
+        .json({ ok: false, error: 'You cannot move there from this room.' });
+    }
+
+    if (dest === currentRoom) {
+      return res
+        .status(400)
+        .json({ ok: false, error: 'You must move to a different room.' });
+    }
   }
 
-    // Move limits:
+  // Move limits:
   // - Everyone gets 1 move on normal rounds.
-  // - Killer gets up to 2 moves on "Killer Advantage" rounds
-  //   regardless of whether they have already killed this round.
+  // - Killer gets up to 2 moves on Killer Advantage rounds.
   const movesThisRound = countMovesThisRound(pin);
   let maxMoves = 1;
 
@@ -1333,6 +1451,8 @@ app.post('/api/move', (req, res) => {
       .json({ ok: false, error: 'You have used all of your moves this round.' });
   }
 
+  // ⭐ BEFORE this move: did all living players already move?
+  const allMovedBefore = haveAllLivingPlayersMovedThisRound();
 
   gameState.moves.push({
     round: gameState.round,
@@ -1349,16 +1469,21 @@ app.post('/api/move', (req, res) => {
     player._hasMovedYet = true;
   }
 
-  // Auto clue retrieval when entering new room,
-  // ONLY if everyone has moved + alone + not clue-locked (handled inside).
-  const clue = maybeGiveClueOnMove(player, dest);
+  // ⭐ AFTER this move: check again
+  const allMovedAfter = haveAllLivingPlayersMovedThisRound();
+
+  // ⭐ First moment everyone has moved → distribute clues to ALL qualifying Victims
+  if (!allMovedBefore && allMovedAfter) {
+    distributeCluesForRound();
+  }
 
   res.json({
     ok: true,
     message: `You slip into ${dest}.`,
-    room: dest,
+    room: dest
   });
 });
+
 
 // Vote (living players only)
 app.post('/api/vote', (req, res) => {
@@ -1416,7 +1541,7 @@ app.post('/api/ghostVote', (req, res) => {
     return res.status(400).json({ ok: false, error: 'Only dead players may cast ghost votes.' });
   }
 
-  const allowed = new Set(['shove', 'scream', 'reveal', 'gaze']);
+    const allowed = new Set(['shove', 'scream', 'reveal', 'gaze', 'intervene', 'sanctuary']);
   if (!allowed.has(event)) {
     return res.status(400).json({ ok: false, error: 'Invalid ghost event choice.' });
   }
@@ -1463,6 +1588,14 @@ app.post('/api/kill', (req, res) => {
       .json({ ok: false, error: 'Dead killers cannot kill.' });
   }
 
+    // The Dead Intervene – no one can be killed this round
+  if (gameState.deadInterveneActive) {
+    return res.status(400).json({
+      ok: false,
+      error: 'Cold hands grip your wrist. The dead intervene; you cannot kill this round.'
+    });
+  }
+
   // Only one kill in a round total
   if (hasAnyKillThisRound()) {
     return res.status(400).json({
@@ -1479,12 +1612,23 @@ app.post('/api/kill', (req, res) => {
     });
   }
 
-  // Kill cannot be the Killer's first action – they must have moved at least once
-  const killerMovesThisRound = countMovesThisRound(killer.pin);
-  if (killerMovesThisRound < 1) {
+    // --- NEW: check killer's moves this round (real vs stay) and advantage ---
+  const killerMovesThisRound = gameState.moves.filter(
+    m => m.round === gameState.round && String(m.pin) === String(killer.pin)
+  );
+
+  const advantageRound = isKillerAdvantageRound();
+
+  // A "real" move is changing rooms (from !== to). A Stay action should NOT
+  // satisfy the move requirement on normal rounds.
+  const hasRealMoveThisRound = killerMovesThisRound.some(m => m.from !== m.to);
+
+  // On normal rounds: must have at least one real move before killing.
+  // On Killer Advantage rounds: kill-first is allowed (kill, move, move).
+  if (!advantageRound && !hasRealMoveThisRound) {
     return res.status(400).json({
       ok: false,
-      error: 'You must move at least once before you kill.'
+      error: 'You must move to a different room at least once before you kill.'
     });
   }
 
@@ -1508,6 +1652,18 @@ app.post('/api/kill', (req, res) => {
     return res.status(400).json({
       ok: false,
       error: 'Too many eyes are watching. You hesitate.'
+    });
+  }
+
+    // Sanctuary – victims in sanctuary rooms cannot be killed this round
+  if (
+    gameState.sanctuaryActive &&
+    Array.isArray(gameState.sanctuaryRooms) &&
+    gameState.sanctuaryRooms.includes(killer.room)
+  ) {
+    return res.status(400).json({
+      ok: false,
+      error: 'The room refuses your violence. This is Sanctuary; you cannot kill here this round.'
     });
   }
 
