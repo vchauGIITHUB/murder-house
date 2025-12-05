@@ -122,6 +122,9 @@ function createFreshGame() {
     // NEW: remember the last ghost-triggered event
     lastGhostEvent: null,
     
+        // NEW: remember up to which round we have already resolved ghost votes
+    lastGhostResolutionRound: 0,   // 0 = none resolved yet
+
          // The Dead Intervene – global kill lock
     deadInterveneActive: false,       // active THIS round
     deadInterveneNextRound: false,    // armed for NEXT round
@@ -611,6 +614,43 @@ function getGhostEventLabel(key) {
   }
 }
 
+// Majority ghost event from a range of rounds [startRound, endRound]
+function getGhostMajorityBetweenRounds(startRound, endRound, { ignoreLastEvent = true } = {}) {
+  const allowed = new Set(['shove', 'scream', 'reveal', 'gaze', 'intervene', 'sanctuary']);
+
+  const votes = (gameState.ghostVotes || []).filter(
+    v =>
+      v.round >= startRound &&
+      v.round <= endRound &&
+      allowed.has(v.event)
+  );
+
+  if (!votes.length) return null;
+
+  const tallies = {};
+  votes.forEach(v => {
+    if (ignoreLastEvent && v.event === gameState.lastGhostEvent) return;
+    tallies[v.event] = (tallies[v.event] || 0) + 1;
+  });
+
+  const entries = Object.entries(tallies);
+  if (!entries.length) return null;
+
+  let [bestKey, bestCount] = entries[0];
+  for (let i = 1; i < entries.length; i++) {
+    const [k, c] = entries[i];
+    if (c > bestCount) {
+      bestKey = k;
+      bestCount = c;
+    }
+  }
+
+  return {
+    event: bestKey,
+    label: getGhostEventLabel(bestKey),
+    count: bestCount
+  };
+}
 
 
 /* ------------------ GM ROUTES ------------------ */
@@ -769,36 +809,24 @@ app.post('/api/gm/nextRound', (req, res) => {
   }
   gameState.shoveNextRound = false;
 
-    // 🔴 Ghost event auto-trigger (every N rounds)
+      // 🔴 Ghost event auto-trigger using ACCUMULATED votes
   const ghostInterval = gameState.ghostEventInterval || 0;
-  if (ghostInterval > 0 && gameState.round % ghostInterval === 0) {
-    const allowed = new Set(['shove', 'scream', 'reveal', 'gaze', 'intervene', 'sanctuary']);
-    const votesPrevRound = (gameState.ghostVotes || []).filter(
-      v => v.round === prevRound && allowed.has(v.event)
-    );
+  const newRound = gameState.round;  // we already incremented above
 
-    if (votesPrevRound.length) {
-      const tally = {};
+  if (ghostInterval > 0 && newRound % ghostInterval === 0) {
+    // We accumulate votes from rounds (lastGhostResolutionRound + 1) .. prevRound
+    const startRound = (gameState.lastGhostResolutionRound || 0) + 1;
+    const endRound = prevRound;  // the round we just finished
 
-      votesPrevRound.forEach(v => {
-        // ❌ Ignore votes for the last event – it is not an option this interval
-        if (v.event === gameState.lastGhostEvent) return;
-        tally[v.event] = (tally[v.event] || 0) + 1;
+    if (startRound <= endRound) {
+      const majority = getGhostMajorityBetweenRounds(startRound, endRound, {
+        ignoreLastEvent: true
       });
 
-      const entries = Object.entries(tally);
-      if (entries.length) {
-        // pick highest; tie-breaker is first in array (stable)
-        let [bestKey, bestCount] = entries[0];
-        for (let i = 1; i < entries.length; i++) {
-          const [k, c] = entries[i];
-          if (c > bestCount) {
-            bestKey = k;
-            bestCount = c;
-          }
-        }
+      if (majority) {
+        const bestKey = majority.event;
 
-        // Apply the chosen event IMMEDIATELY for this round
+        // Apply the chosen event IMMEDIATELY for this newRound
         switch (bestKey) {
           case 'reveal':
             gameState.revealDots = true;
@@ -811,7 +839,7 @@ app.post('/api/gm/nextRound', (req, res) => {
             break;
           case 'shove':
             scatterPlayersNoSameRoom(false);
-            gameState.shoveTriggeredRound = gameState.round;
+            gameState.shoveTriggeredRound = newRound;
             break;
           case 'intervene':
             gameState.deadInterveneActive = true;
@@ -830,14 +858,21 @@ app.post('/api/gm/nextRound', (req, res) => {
             break;
         }
 
-        // Remember which event fired so we can block it next interval
+        // Remember which event fired, and up to which round votes are "used"
         gameState.lastGhostEvent = bestKey;
+        gameState.lastGhostResolutionRound = endRound;
+
+        // Optional: prune old votes so the array doesn't grow forever
+        gameState.ghostVotes = (gameState.ghostVotes || []).filter(
+          v => v.round > endRound
+        );
       }
     }
   }
 
   res.json({ ok: true, round: gameState.round });
 });
+
 
 // New game
 app.post('/api/gm/newGame', (req, res) => {
